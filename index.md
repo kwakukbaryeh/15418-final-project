@@ -1,12 +1,12 @@
 ---
-title: "Parallel Logistic Regression Project"
+title: "Parallel Congestion-Aware Vehicle Routing"
 ---
 
 ## Latest News
 
 ## Title
-**Parallel Logistic Regression with Stochastic Gradient Descent**
+**Parallel Congestion-Aware Vehicle Routing**
 
 ## Proposal
 You can find our detailed proposal on Overleaf here:
-[Project Proposal](https://www.overleaf.com/read/jrzbndwvschs#e884d0)
+[Project Proposal](https://www.overleaf.com/read/bkngmypsrvgp#0bc726)
