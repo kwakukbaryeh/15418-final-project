@@ -8,6 +8,7 @@
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 
 #define VERTICIES 4096
@@ -35,17 +36,17 @@ struct Tuple {
 int get_rand_Nedges() {
     double rand = ((double) random()) / RAND_MAX;
     if (rand < 0.025) {
-        return 2;
+        return 1;
     } else if (rand < 0.16) {
-        return 3;
+        return 2;
     } else if (rand < 0.5) {
-        return 4;
+        return 3;
     } else if (rand < 0.84) {
-        return 4;
+        return 3;
     } else if (rand < 0.97) {
-        return 5;
+        return 4;
     } else {
-        return 6;
+        return 5;
     }
 }
 
@@ -57,22 +58,73 @@ int get_rand_cost() {
     return (random() % 10) + 1;
 }
 
-int main() {
-    std::vector<std::vector<Tuple>> graph(VERTICIES);
-    std::vector<Tuple> choices(VERTICIES);
-    for (int i = 0; i < choices.size(); i++)
-        choices[i].y = get_rand_Nedges();
+/**
+ * @name            in
+ * @details         Is v in the edges list provided?
+ *                  
+ * @param[in] edges list of edges provided
+ * @param[in] v     vertex v we are checking for an existing edge with
+ */
+bool in (std::vector<Tuple> edges, int v) {
+    for (Tuple t : edges)
+        if (t.x == v)
+            return true;
+    
+    return false;
+}
 
-    for (int i = 0; i < graph.size(); i++) {
-        int Nedges = get_rand_Nedges();
-        std::vector<Tuple> edges(Nedges);
-        for (int e = 0; e < Nedges; e++) {
-            int v = random() % VERTICIES;
-            int cost = get_rand_cost();
-            edges[e] = {v,cost};
-        }
-        graph[i] = edges;
+int main() {
+    //Initialize the Graph
+    std::vector<std::vector<Tuple>> graph(VERTICIES);
+    std::vector<int> connected;
+    
+    // Initalize the number of edges
+    std::vector<int> free_edges(VERTICIES);
+    for (int i = 0; i < VERTICIES; i++) {
+        free_edges[i] = get_rand_Nedges();
     }
+
+    // Initalize Bag
+    std::vector<int> bag(VERTICIES);
+    for (int i = 0; i < VERTICIES; i++) {
+        bag[i] = i;
+    }
+
+    while (bag.size() > 0) {
+        int u = random() % bag.size();
+        if (connected.size() == 0) {
+            connected.push_back(bag[u]);
+            bag.erase(bag.begin() + u);
+        } else {
+            int v = connected[random() % connected.size()];
+            while (free_edges[v] == 0) {
+                v = connected[random() % connected.size()];
+            }
+            int cost = get_rand_cost();
+            graph[bag[u]].push_back({v,cost});
+            graph[v].push_back({bag[u],cost});
+            connected.push_back(bag[u]);
+            bag.erase(bag.begin() + u);
+            free_edges[v]--;
+            free_edges[u]--;
+        }
+    }
+
+    // Fill remaining edges
+    for (int i = 0; i < free_edges.size(); i++) {
+        while (free_edges[i] > 0) {
+            int v = random() % VERTICIES;
+            while (free_edges[v] == 0 || in(graph[i], v) || v == i) {
+                v = random() % VERTICIES;
+            }
+            free_edges[i]--;
+            free_edges[v]--;
+            int cost = get_rand_cost();
+            graph[i].push_back({v, cost});
+            graph[v].push_back({i, cost});
+        }
+    }
+    
 
     // Write Graph to stdout
     printf("Graph:{\n");
