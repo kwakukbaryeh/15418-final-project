@@ -16,12 +16,22 @@
 #define EDGE_OFFSET 2
 #define EDGE_RANGE 4
 
+/**
+ * @name    Tuple
+ * @details It's just a 2-tuple
+ *          
+ * @param x The first value in the 2-tuple
+ * @param y The second value in the 2-tuple
+ */
 struct Tuple {
     int x;
     int y;
 };
 
-
+/**
+ * @name     get_rand_Nedges
+ * @details  Get a random number of edges that this vertex should have    
+ */
 int get_rand_Nedges() {
     double rand = ((double) random()) / RAND_MAX;
     if (rand < 0.025) {
@@ -39,6 +49,10 @@ int get_rand_Nedges() {
     }
 }
 
+/**
+ * @name     get_rand_cost
+ * @details  Get the cost to traverse this edge    
+ */
 int get_rand_cost() {
     return (random() % 10) + 1;
 }
