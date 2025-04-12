@@ -59,6 +59,10 @@ int get_rand_cost() {
 
 int main() {
     std::vector<std::vector<Tuple>> graph(VERTICIES);
+    std::vector<Tuple> choices(VERTICIES);
+    for (int i = 0; i < choices.size(); i++)
+        choices[i].y = get_rand_Nedges();
+
     for (int i = 0; i < graph.size(); i++) {
         int Nedges = get_rand_Nedges();
         std::vector<Tuple> edges(Nedges);
@@ -69,6 +73,8 @@ int main() {
         }
         graph[i] = edges;
     }
+
+    // Write Graph to stdout
     printf("Graph:{\n");
     for (int i = 0; i < graph.size(); i++) {
         printf("%d:[", i);
@@ -77,6 +83,8 @@ int main() {
         }
         printf("]\n");
     }
+
+    // Write Cars to stdout
     printf("}\nCars:[\n");
     for (int i = 0; i < N_CARS; i++) {
         int src = random() % VERTICIES;
