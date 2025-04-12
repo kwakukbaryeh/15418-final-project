@@ -64,7 +64,7 @@ int main() {
         while (dest == src) {
             dest = random() % VERTICIES;
         }
-        printf("(%d, %d),\n", src, dest);
+        printf("(%d,%d),\n", src, dest);
     }
     printf("]\n");
     return 0;
