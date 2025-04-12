@@ -1,5 +1,11 @@
-#include <vector>
+/**
+ *          15-418 Final Project
+ *          Title:  Congestion Aware Map Routing
+ *          Credit: Parth Iyer   (pniyer@andrew.cmu.edu)
+ *                  Kwaku Baryeh (kbaryeh@andrew.cmu.edu)
+ */
 
+#include <vector>
 #include <stdio.h>
 #include <stdlib.h>
 

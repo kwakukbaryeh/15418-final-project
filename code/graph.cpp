@@ -1,3 +1,10 @@
+/**
+ *          15-418 Final Project
+ *          Title:  Congestion Aware Map Routing
+ *          Credit: Parth Iyer   (pniyer@andrew.cmu.edu)
+ *                  Kwaku Baryeh (kbaryeh@andrew.cmu.edu)
+ */
+
 #include "graph.h"
 #include <iostream>
 #include <fstream>
