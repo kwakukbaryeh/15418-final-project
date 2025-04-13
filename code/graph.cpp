@@ -60,25 +60,56 @@ Problem load_problem(std::string& fname) {
     
     //Parse the Graph
     {
-    std::stringstream ss(graph);
-    std::string line;
-    while (std::getline(ss, line, '\n')) {
-        std::vector<Edge> e = parse_edges(line);
-        g.push_back(e);
-    }
+        std::stringstream ss(graph);
+        std::string line;
+        while (std::getline(ss, line, '\n')) {
+            std::vector<Edge> e = parse_edges(line);
+            g.push_back(e);
+        }
     }
 
     //Parse the Cars
     {
-    std::stringstream ss(cars);
-    std::string line;
-    while (std::getline(ss, line, '\n')) {
-        line = line.substr(1, line.find(")"));
-        int src = std::stoi(line.substr(0, line.find(",")));
-        int dest = std::stoi(line.substr(line.find(",")+1));
-        c.push_back({src, dest});
-    }
+        std::stringstream ss(cars);
+        std::string line;
+        while (std::getline(ss, line, '\n')) {
+            line = line.substr(1, line.find(")"));
+            int src = std::stoi(line.substr(0, line.find(",")));
+            int dest = std::stoi(line.substr(line.find(",")+1));
+            c.push_back({src, dest});
+        }
     }
 
     return {g, c};
+}
+
+void print_graph(const Graph &g) {
+    for (int i = 0; i < g.size(); i++) {
+        for (int j = 0; j < g[i].size(); j++) {
+            fprintf(stderr, "(\nstart: %d\nend: %d\nbase_cost: %d\ncapacity: %d\nload: %d\n", g[i][j].start, g[i][j].end, g[i][j].base_cost, g[i][j].capacity, g[i][j].load);
+            fprintf(stderr, "map:\n");
+            for (const auto& pair : g[i][j].costs) {
+                fprintf(stderr, "\t%d: %d\n", pair.first, pair.second);
+            }
+            fprintf(stderr, ")\n");
+        }
+    }
+}
+
+void save_problem(const Problem &p) {
+    // Print Graph
+    for (int i = 0; i < p.graph.size(); i++) {
+        printf("%d:", i);
+        for (int j = 0; j < p.graph[i].size(); j++) {
+            printf("(%d,%d,%d,%d)", p.graph[i][j].start, p.graph[i][j].end, p.graph[i][j].base_cost, p.graph[i][j].capacity);
+        }
+        printf("\n");
+    }
+
+    printf("CARS\n");
+
+    // Print all the Cars
+    for (int i = 0; i < p.cars.size(); i++) {
+        printf("(%d,%d)\n", p.cars[i].src, p.cars[i].dest);
+    }
 }

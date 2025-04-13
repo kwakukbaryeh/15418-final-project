@@ -10,5 +10,5 @@ main:
 	$(CXX) $(CXXFLAGS) -o main main.cpp graph.cpp graph.h
 
 clean:
-	rm -f main mktests *.log
+	rm -f main mktests *.log ./*.txt
 

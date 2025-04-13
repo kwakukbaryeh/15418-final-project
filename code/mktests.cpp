@@ -146,28 +146,20 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Print Graph
-    for (int i = 0; i < g.size(); i++) {
-        printf("%d:", i);
-        for (int j = 0; j < g[i].size(); j++) {
-            printf("(%d,%d,%d,%d)", g[i][j].start, g[i][j].end, g[i][j].base_cost, g[i][j].capacity);
-        }
-        printf("\n");
-    }
-
-    // Split Here
-    printf("CARS\n");
-
-    // Print all the Cars
+    // Generate all the Cars
+    std::vector<Car> c;
     for (int i = 0; i < N_CARS; i++) {
         int src = random() % VERTICIES;
         int dest = random() % VERTICIES;
         while (dest == src) {
             dest = random() % VERTICIES;
         }
-        Car c = {src, dest};
-        printf("(%d,%d)\n", c.src, c.dest);
+        c.push_back({src, dest});
     }
+
+    //save to file
+    Problem p = {g, c};
+    save_problem(p);
 
     return 0;
 }

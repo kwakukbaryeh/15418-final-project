@@ -13,8 +13,8 @@
 #include <string>
 
 /**
- * @name    Vertex
- * @details It's just an int labeling all the verticies in the graph
+ * @name                Vertex
+ * @details             It's just an int labeling all the verticies in the graph
  */
 typedef int Vertex;
 
@@ -27,7 +27,7 @@ typedef int Vertex;
  * 
  * @param start         The starting vertex of the edge
  * @param end           The ending vertex of the edge
- * @param base_cost   The minimum time (in min) it takes to traverse this edge
+ * @param base_cost     The minimum time (in min) it takes to traverse this edge
  * @param costs         A map from a time slice (integer) to the realtime cost
  */
 struct Edge {
@@ -39,11 +39,11 @@ struct Edge {
 };
 
 /**
- * @name        Car
- * @details     It's a vehicle which wants to go from point A to point B
+ * @name                Car
+ * @details             It's a vehicle which wants to go from point A to point B
  * 
- * @param src   The starting vertex of the car
- * @param dest  The ending vertex of the car
+ * @param src           The starting vertex of the car
+ * @param dest          The ending vertex of the car
  */
 struct Car {
     Vertex src;
@@ -51,18 +51,20 @@ struct Car {
 };
 
 /**
- * @name    Graph
- * @details It's a vector of vector of edges. Each index in the inital vector tells
- *          you which is the starting edge. The inner vector is just a list of edges
+ * @name                Graph
+ * @details             It's a vector of vector of edges. Each index in the inital
+ *                      vector tells you which is the starting edge. The inner 
+ *                      vector is just a list of edges.
  */
 typedef std::vector<std::vector<Edge>> Graph;
 
 /**
- * @name        Problem
- * @details     It contains a Graph and a list of Cars which need to be routed.
+ * @name                Problem
+ * @details             It contains a Graph and a list of Cars which need to be 
+ *                      routed.
  * 
- * @param graph Is the graph which we will route vehicles on
- * @param cars  Is a list of cars that we need to route
+ * @param graph         Is the graph which we will route vehicles on
+ * @param cars          Is a list of cars that we need to route
  */
 struct Problem {
     Graph graph;
@@ -70,18 +72,32 @@ struct Problem {
 };
 
 /**
- * @name            load_problem
- * @details         loads the problem 
+ * @name                load_problem
+ * @details             loads the problem 
  * 
- * @param[in] fname A file name from which to load the problem details (Graph and Cars)
- * @return          Problem structure packed with the problem data loaded from the file   
+ * @param[in] fname     A file name from which to load the problem details (Graph 
+ *                      and Cars)
+ * 
+ * @return              Problem structure packed with the problem data loaded 
+ *                      from the file   
  */
 Problem load_problem(std::string &fname);
 
 /**
- * Pre-compute cost from each vertex to evey other vertex (one time cost) using Djiksta's Algo
- * Use pre-computed cost as heuristic
+ * @name                print_graph
+ * @details             Prints all the information associated with a graph.
+ * 
+ * @param[in] g         A graph which we will print
  */
-int heuristic(std::vector<Edge> &path, Graph g);
+void print_graph(const Graph &g);
 
-#endif
+/**
+ * @name                save_problem
+ * @details             Turns a problem instance into a string and pushes it to 
+ *                      stdout
+ * 
+ * @param[in] p         A problem instance which we will print
+ */
+void save_problem(const Problem &p);
+
+#endif // GRAPH
