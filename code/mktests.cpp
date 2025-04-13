@@ -9,25 +9,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "graph.h"
 
 
 #define VERTICIES 4096
-#define N_CARS 1024
-
-#define EDGE_OFFSET 2
-#define EDGE_RANGE 4
-
-/**
- * @name    Tuple
- * @details It's just a 2-tuple
- *          
- * @param x The first value in the 2-tuple
- * @param y The second value in the 2-tuple
- */
-struct Tuple {
-    int x;
-    int y;
-};
 
 /**
  * @name     get_rand_Nedges
@@ -36,17 +21,17 @@ struct Tuple {
 int get_rand_Nedges() {
     double rand = ((double) random()) / RAND_MAX;
     if (rand < 0.025) {
-        return 1;
-    } else if (rand < 0.16) {
         return 2;
+    } else if (rand < 0.16) {
+        return 3;
     } else if (rand < 0.5) {
-        return 3;
-    } else if (rand < 0.84) {
-        return 3;
-    } else if (rand < 0.97) {
         return 4;
-    } else {
+    } else if (rand < 0.84) {
+        return 4;
+    } else if (rand < 0.97) {
         return 5;
+    } else {
+        return 6;
     }
 }
 
@@ -59,24 +44,44 @@ int get_rand_cost() {
 }
 
 /**
- * @name            in
- * @details         Is v in the edges list provided?
- *                  
- * @param[in] edges list of edges provided
- * @param[in] v     vertex v we are checking for an existing edge with
+ * @name     get_rand_capacity
+ * @details  Get a random capacity for each edge
  */
-bool in (std::vector<Tuple> edges, int v) {
-    for (Tuple t : edges)
-        if (t.x == v)
+int get_rand_capacity() {
+    double rand = ((double) random()) / RAND_MAX;
+    if (rand < 0.025) {
+        return 5;
+    } else if (rand < 0.16) {
+        return 4;
+    } else if (rand < 0.5) {
+        return 2;
+    } else if (rand < 0.84) {
+        return 1;
+    } else if (rand < 0.97) {
+        return 3;
+    } else {
+        return 1;
+    }
+}
+
+bool in(Vertex v, std::vector<Edge> e) {
+    for (int i = 0; i < e.size(); i++) {
+        if (e[i].start == v || e[i].end == v) {
             return true;
-    
+        }
+    }
     return false;
 }
 
-int main() {
-    //Initialize the Graph
-    std::vector<std::vector<Tuple>> graph(VERTICIES);
-    std::vector<int> connected;
+int main(int argc, char *argv[]) {  
+    int N_CARS = 0;
+    if (argc > 1)
+        N_CARS = std::atoi(argv[1]);
+    
+
+    Graph g(VERTICIES);
+
+    std::vector<Vertex> connected;
     
     // Initalize the number of edges
     std::vector<int> free_edges(VERTICIES);
@@ -85,11 +90,12 @@ int main() {
     }
 
     // Initalize Bag
-    std::vector<int> bag(VERTICIES);
+    std::vector<Vertex> bag(VERTICIES);
     for (int i = 0; i < VERTICIES; i++) {
         bag[i] = i;
     }
 
+    // Connect the components of the graph
     while (bag.size() > 0) {
         int u = random() % bag.size();
         if (connected.size() == 0) {
@@ -97,55 +103,71 @@ int main() {
             bag.erase(bag.begin() + u);
         } else {
             int v = connected[random() % connected.size()];
-            while (free_edges[v] == 0) {
+            while (free_edges[v] <= 0) {
                 v = connected[random() % connected.size()];
             }
+
             int cost = get_rand_cost();
-            graph[bag[u]].push_back({v,cost});
-            graph[v].push_back({bag[u],cost});
+            int capacity = get_rand_capacity();
+
+            g[bag[u]].push_back({bag[u], v, cost, capacity, 0, std::map<int, int>()});
+            g[v].push_back({v, bag[u], cost, capacity, 0, std::map<int, int>()});
+            
+            free_edges[v]--;
+            free_edges[bag[u]]--;
+
             connected.push_back(bag[u]);
             bag.erase(bag.begin() + u);
+        }
+    }
+
+    for (int u = 0; u < free_edges.size(); u++ ) {
+        while (free_edges[u] > 0) {
+            int n = 0;
+            for (int i = 0; i < free_edges.size(); i++) {
+                n += (int) (free_edges[i] > 0);
+            }
+            if (n == 1) {
+                break;
+            }
+            int v = connected[random() % connected.size()];
+            while (free_edges[v] <= 0 || in(v, g[u])) {
+                v = connected[random() % connected.size()];
+            }
+
+            int cost = get_rand_cost();
+            int capacity = get_rand_capacity();
+
+            g[u].push_back({u, v, cost, capacity, 0, std::map<int, int>()});
+            g[v].push_back({v, u, cost, capacity, 0, std::map<int, int>()});
+            
             free_edges[v]--;
             free_edges[u]--;
         }
     }
 
-    // Fill remaining edges
-    for (int i = 0; i < free_edges.size(); i++) {
-        while (free_edges[i] > 0) {
-            int v = random() % VERTICIES;
-            while (free_edges[v] == 0 || in(graph[i], v) || v == i) {
-                v = random() % VERTICIES;
-            }
-            free_edges[i]--;
-            free_edges[v]--;
-            int cost = get_rand_cost();
-            graph[i].push_back({v, cost});
-            graph[v].push_back({i, cost});
+    // Print Graph
+    for (int i = 0; i < g.size(); i++) {
+        printf("%d:", i);
+        for (int j = 0; j < g[i].size(); j++) {
+            printf("(%d,%d,%d,%d)", g[i][j].start, g[i][j].end, g[i][j].base_cost, g[i][j].capacity);
         }
-    }
-    
-
-    // Write Graph to stdout
-    printf("Graph:{\n");
-    for (int i = 0; i < graph.size(); i++) {
-        printf("%d:[", i);
-        for (int e = 0; e < graph[i].size(); e++) {
-            printf("(%d,%d),", graph[i][e].x, graph[i][e].y);
-        }
-        printf("]\n");
+        printf("\n");
     }
 
-    // Write Cars to stdout
-    printf("}\nCars:[\n");
+    // Split Here
+    printf("CARS\n");
+
+    // Print all the Cars
     for (int i = 0; i < N_CARS; i++) {
         int src = random() % VERTICIES;
         int dest = random() % VERTICIES;
         while (dest == src) {
             dest = random() % VERTICIES;
         }
-        printf("(%d,%d),\n", src, dest);
+        Car c = {src, dest};
+        printf("(%d,%d)\n", c.src, c.dest);
     }
-    printf("]\n");
+
     return 0;
 }

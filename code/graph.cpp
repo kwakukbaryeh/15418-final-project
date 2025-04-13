@@ -11,20 +11,22 @@
 #include <sstream>
 #include <stdio.h>
 
-std::vector<Edge> parse_edge(const std::string& edge_str) {
+std::vector<Edge> parse_edges(const std::string& edge_str) {
     std::vector<Edge> edges;
-    int start = std::stoi(edge_str.substr(0,edge_str.find(":")));
-    int rstart = edge_str.find("[") + 1;
-    int rend = edge_str.find("]");
-    std::string rem = edge_str.substr(rstart, rend-rstart);
-    while (rem.size() > 0) {
-        rstart = rem.find("(");
-        rend = rem.find(")") + 1;
-        std::string e = rem.substr(rstart + 1, rend - 1);
+    std::string str = edge_str.substr(edge_str.find(":")+1);
+    while (str.size() > 0) {
+        int rstart = str.find("(");
+        int rend = str.find(")") + 1;
+        std::string e = str.substr(rstart + 1, rend - 1);
+        int start = std::stoi(e.substr(0,e.find(",")));
+        e = e.substr(e.find(",")+1);
         int end = std::stoi(e.substr(0,e.find(",")));
-        int cost = std::stoi(e.substr(e.find(",")+1));
-        edges.push_back({start, end, cost});
-        rem = rem.substr(rend + 1);
+        e = e.substr(e.find(",")+1);
+        int cost = std::stoi(e.substr(0,e.find(",")));
+        e = e.substr(e.find(",")+1);
+        int capacity = std::stoi(e.substr(0,e.find(")")));
+        edges.push_back({start, end, cost, capacity, 0, std::map<int, int>()});
+        str = str.substr(rend);
     }
     return edges; 
 }
@@ -48,27 +50,23 @@ Problem load_problem(std::string& fname) {
     f = buffer.str();
 
     //Get the Graph Portion of the problem file
-    size_t graph_start = f.find("Graph:{") + sizeof("Graph:{");
-    size_t graph_end = f.find("}");
-    size_t graph_str_size = graph_end - graph_start;
-    std::string graph = f.substr(graph_start, graph_str_size);
+    size_t graph_end = f.find("CARS");
+    std::string graph = f.substr(0, graph_end);
     f = f.substr(graph_end);
 
     //Get the Cars Portion of the problem file
-    size_t cars_start = f.find("Cars:[") + sizeof("Cars:[");
-    size_t cars_end = f.find("]");
-    std::string cars = f.substr(cars_start, cars_end-cars_start);
+    size_t cars_start = f.find("CARS") + sizeof("CARS");
+    std::string cars = f.substr(cars_start);
     
     //Parse the Graph
     {
     std::stringstream ss(graph);
     std::string line;
     while (std::getline(ss, line, '\n')) {
-        std::vector<Edge> e = parse_edge(line);
+        std::vector<Edge> e = parse_edges(line);
         g.push_back(e);
     }
     }
-
 
     //Parse the Cars
     {

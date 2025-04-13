@@ -27,12 +27,14 @@ typedef int Vertex;
  * 
  * @param start         The starting vertex of the edge
  * @param end           The ending vertex of the edge
- * @param base_weight   The minimum time (in min) it takes to traverse this edge
+ * @param base_cost   The minimum time (in min) it takes to traverse this edge
  * @param costs         A map from a time slice (integer) to the realtime cost
  */
 struct Edge {
     Vertex start, end;
-    int base_weight;
+    int base_cost;
+    int capacity;
+    int load;
     std::map<int, int> costs;
 };
 
@@ -75,5 +77,11 @@ struct Problem {
  * @return          Problem structure packed with the problem data loaded from the file   
  */
 Problem load_problem(std::string &fname);
+
+/**
+ * Pre-compute cost from each vertex to evey other vertex (one time cost) using Djiksta's Algo
+ * Use pre-computed cost as heuristic
+ */
+int heuristic(std::vector<Edge> &path, Graph g);
 
 #endif
