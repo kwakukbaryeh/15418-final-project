@@ -1,49 +1,52 @@
 #ifndef SEQUENTIAL_H
 #define SEQUENTIAL_H
 
-#include "graph.h"  // Contains definitions for Node, Edge, Graph, Car, Problem, etc.
+#include "graph.h"  // Contains definitions for Vertex, Edge, Graph, Car, Problem, etc.
 #include <vector>
 using namespace std;
 
 const float INF = 1e9;
-const float CONGESTION_FACTOR = 1.0;   // Multiplier for overload on an edge.
-const float REPLAN_THRESHOLD = 1.2;    // If an edge's cost is 20% over its base cost, trigger re-planning.
 
 // Structure for nodes used in A* search.
 struct AStarNode {
-    int id;
-    float g;       // Cost from the start.
-    float f;       // f = g + heuristic estimate.
-    int parent;    // Parent node id (for path reconstruction).
-    // Operator overload to ensure the priority queue works as a min-heap.
+    int id;      // Vertex id
+    float g;     // Cost from start to this vertex.
+    float f;     // f = g + heuristic.
+    int parent;  // For path reconstruction.
     bool operator>(const AStarNode &other) const {
         return f > other.f;
     }
 };
 
-// Function prototypes for our sequential congestion-aware routing implementation:
+// Helper function prototypes:
 
-// Returns the minimum base cost among all edges in the graph.
+// The base cost for an edge).
+int computeManhattanCost(const Graph &graph, const Edge &edge);
+
+// Compute the dynamic cost of traversing an edge.
+// If an edge’s load is less than its capacity, then the cost is simply the Manhattan distance.
+// Otherwise, return INF to indicate the edge cannot be used.
+float computeEdgeCost(const Graph &graph, const Edge &edge);
+
+// Returns the minimum Manhattan distance (base cost) among all edges in the graph.
 float getMinimumEdgeCost(const Graph &graph);
 
-// Computes the cost-based heuristic using Manhattan distance multiplied by
-// the global minimum edge cost (a lower-bound estimate) for the route from 'current' to 'goal'.
+// Computes the cost-based heuristic (Manhattan distance) from the current vertex to the goal vertex.
 float cost_heuristic(const Graph &graph, int current, int goal);
 
-// A* search using the cost-based heuristic and dynamic (congestion aware) edge costs.
-// Returns true if a path is found; the resulting path (node IDs) is stored in 'path'.
+// A* search using our cost-based heuristic and dynamically computed edge costs.
+// Returns true if a path is found; the resulting path (vector of vertex IDs) is stored in 'path'.
 bool a_star(const Graph &graph, int start, int goal, vector<int> &path);
 
-// Updates the load on each edge based on a vector of vehicle routes.
+// Updates edge loads based on a set of vehicle routes (each route is a sequence of vertex IDs).
 void update_edge_loads(Graph &graph, const vector<vector<int>> &vehicle_routes);
 
-// Updates each edge's current weight based on its load (congestion status).
+// Edge cost is computed on the fly so we do not need a separate update_edge_weights.
+// We provide a stub for interface consistency.
 void update_edge_weights(Graph &graph);
 
-// This function advances the simulation in fixed time increments ("ticks").
-// At each tick, it advances vehicles along their routes, updates edge loads and costs,
-// and triggers re-planning for vehicles when necessary.
+// Advances the simulation in discrete time ticks. In each tick, every vehicle (if not at its destination)
+// is advanced along its planned route (or re-plans if necessary), then the loads on edges are updated.
 void simulate_discrete_time(Problem &p);
-
 
 #endif // SEQUENTIAL_H
