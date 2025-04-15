@@ -6,7 +6,8 @@
 #include <iostream>
 using namespace std;
 
-// Compute Manhattan distance between the two endpoints of the edge.
+// --------------------------------------------------------------------
+// Compute Manhattan distance between the two endpoints of an edge.
 int computeManhattanCost(const Graph &graph, const Edge &edge) {
     int x1 = graph.vertices[edge.start].x;
     int y1 = graph.vertices[edge.start].y;
@@ -15,32 +16,29 @@ int computeManhattanCost(const Graph &graph, const Edge &edge) {
     return abs(x1 - x2) + abs(y1 - y2);
 }
 
+// --------------------------------------------------------------------
 // Compute dynamic cost for traversing an edge.
-// If the edge load is less than its capacity, return the Manhattan cost;
-// otherwise, treat the edge as impassable (cost = INF).
+// In this version, we use the Manhattan cost. (You could later add congestion effects.)
 float computeEdgeCost(const Graph &graph, const Edge &edge) {
-    int base = computeManhattanCost(graph, edge);
-    if (edge.load < edge.capacity)
-        return (float) base;
-    else
-        return INF;
+    return (float) computeManhattanCost(graph, edge);
 }
 
-// Return the minimum Manhattan distance among all edges in the graph.
+// --------------------------------------------------------------------
+// Return the minimum Manhattan cost among all edges in the graph.
 float getMinimumEdgeCost(const Graph &graph) {
     float minCost = INF;
-    // Since edges are stored per vertex in a 2D vector.
     for (const auto &edgeList : graph.edges) {
         for (const Edge &edge : edgeList) {
-            int base = computeManhattanCost(graph, edge);
-            if (base < minCost)
-                minCost = base;
+            int cost = computeManhattanCost(graph, edge);
+            if (cost < minCost)
+                minCost = cost;
         }
     }
     return minCost;
 }
 
-// Heuristic function: Manhattan distance from current to goal multiplied by the minimum Manhattan cost.
+// --------------------------------------------------------------------
+// Manhattan-distance heuristic for A* search.
 float cost_heuristic(const Graph &graph, int current, int goal) {
     int dx = abs(graph.vertices[current].x - graph.vertices[goal].x);
     int dy = abs(graph.vertices[current].y - graph.vertices[goal].y);
@@ -49,7 +47,8 @@ float cost_heuristic(const Graph &graph, int current, int goal) {
     return manhattan * minCost;
 }
 
-// A* search using dynamic edge cost computation.
+// --------------------------------------------------------------------
+// Standard A* search to compute a route from start to goal using Manhattan costs.
 bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
     int n = graph.vertices.size();
     vector<float> gScore(n, INF);
@@ -58,7 +57,6 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
     vector<bool> closed(n, false);
 
     priority_queue<AStarNode, vector<AStarNode>, greater<AStarNode>> openSet;
-
     gScore[start] = 0.0;
     fScore[start] = cost_heuristic(graph, start, goal);
     openSet.push({start, gScore[start], fScore[start], -1});
@@ -75,18 +73,21 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
                 cur = cameFrom[cur];
             }
             reverse(path.begin(), path.end());
+            cout << "[A*] Found route: ";
+            for (int node : path)
+                cout << node << " ";
+            cout << endl;
             return true;
         }
 
-        if (closed[current.id]) continue;
+        if (closed[current.id])
+            continue;
         closed[current.id] = true;
         cameFrom[current.id] = current.parent;
 
-        // Iterate over all edges incident on the current vertex.
-        // Note: graph.adj[current.id] is a vector of indices into graph.edges[current.id].
-        for (int localIdx : graph.adj[current.id]) {
+        // Iterate directly over the edges from current node.
+        for (int localIdx = 0; localIdx < graph.edges[current.id].size(); localIdx++) {
             const Edge &edge = graph.edges[current.id][localIdx];
-            // Determine neighbor: if current.id == edge.start, neighbor is edge.end; otherwise, edge.start.
             int neighbor = (edge.start == current.id) ? edge.end : edge.start;
             if (closed[neighbor]) continue;
 
@@ -103,46 +104,51 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
     return false;
 }
 
-// Update the loads on edges based on the given complete vehicle routes.
-void update_edge_loads(Graph &graph, const vector<vector<int>> &vehicle_routes) {
-    // Reset all edge loads.
+// --------------------------------------------------------------------
+// Update the loads on edges based only on the moves made in the current tick.
+// This function uses the 'prevPositions' and 'currentPositions' vectors
+// so that it reflects only the vehicles that are currently traversing an edge.
+void update_edge_loads_current(Graph &graph, const vector<int> &prevPositions, const vector<int> &currentPositions) {
+    // Reset loads for all edges.
     for (auto &edgeList : graph.edges) {
         for (auto &edge : edgeList) {
             edge.load = 0;
         }
     }
-    // For each vehicle route, for every pair of consecutive vertices, find the corresponding edge
-    // and increment its load.
-    for (const auto &route : vehicle_routes) {
-        for (size_t i = 0; i + 1 < route.size(); i++) {
-            int u = route[i];
-            int v = route[i + 1];
-            // Look in the adjacency list for vertex u.
-            for (int localIdx : graph.adj[u]) {
-                const Edge &edge = graph.edges[u][localIdx];
-                if ((edge.start == u && edge.end == v) || (edge.start == v && edge.end == u)) {
-                    // Increment load (since edges are stored twice, this update assumes symmetry).
-                    // You may wish to update the edge in both u’s and v’s row (if needed) or design your
-                    // data structures so that each edge is stored only once.
-                    graph.edges[u][localIdx].load++;
-                    break;
-                }
+    // For each vehicle, update the load for the edge taken in this tick.
+    for (size_t i = 0; i < currentPositions.size(); i++) {
+        int u = prevPositions[i];
+        int v = currentPositions[i];
+        bool foundEdge = false;
+        for (int localIdx = 0; localIdx < graph.edges[u].size(); localIdx++) {
+            const Edge &edge = graph.edges[u][localIdx];
+            if ((edge.start == u && edge.end == v) || (edge.start == v && edge.end == u)) {
+                // Increase the load by 1 for this tick.
+                graph.edges[u][localIdx].load++;
+                foundEdge = true;
+                break;
             }
+        }
+        if (!foundEdge) {
+            cout << "[DEBUG] Edge not found for traversal from " << u << " to " << v << endl;
         }
     }
 }
 
-// Simulate the movement of vehicles in discrete time ticks.
-// At each tick, each vehicle not at its destination attempts to advance one edge along its current plan.
-// If necessary, the vehicle re-plans a route using A* (which will now avoid edges that are already at capacity).
+// --------------------------------------------------------------------
+// Simulation with transient (current tick only) edge loads.
+// Instead of updating loads from the complete cumulative history (overallPaths),
+// we store the previous positions for each tick and update loads only for the current moves.
+// This avoids accumulating congestion from vehicles that have already left an edge.
 void simulate_discrete_time(Problem &p) {
     int numVehicles = p.cars.size();
     vector<int> currentPosition(numVehicles);
-    vector<vector<int>> vehicleRoutes(numVehicles); // current planned route per vehicle
+    vector<int> prevPositions(numVehicles);  // to store previous tick positions
+    vector<vector<int>> overallPaths(numVehicles);  // overall movement histories
+    vector<vector<int>> vehicleRoutes(numVehicles);  // current planned routes
     vector<bool> reachedDestination(numVehicles, false);
-    vector<vector<int>> overallPaths(numVehicles);  // complete movement history
 
-    // Initialize: each vehicle begins at its source.
+    // Initialize starting positions.
     for (int i = 0; i < numVehicles; i++) {
         currentPosition[i] = p.cars[i].src;
         overallPaths[i].push_back(currentPosition[i]);
@@ -152,35 +158,44 @@ void simulate_discrete_time(Problem &p) {
     int tick = 0;
     while (anyNotDone) {
         cout << "Tick " << tick << ":" << endl;
-        
-        // For each vehicle, if it hasn't reached its destination:
-        for (int i = 0; i < numVehicles; i++) {
-            if (reachedDestination[i]) continue;
+        // Save current positions as previous positions.
+        prevPositions = currentPosition;
 
-            // If the vehicle has no current route or if the next edge is blocked (cost == INF), replan.
+        // Process each vehicle.
+        for (int i = 0; i < numVehicles; i++) {
+            if (reachedDestination[i])
+                continue;
             bool needReplan = false;
-            if (vehicleRoutes[i].empty()) {
+            if (vehicleRoutes[i].empty() || vehicleRoutes[i].size() < 2) {
+                cout << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << endl;
                 needReplan = true;
             } else {
-                // The next vertex in the current route.
-                if (vehicleRoutes[i].size() < 2) {
-                    needReplan = true;
-                } else {
-                    int nextNode = vehicleRoutes[i][1];
-                    bool edgeFound = false;
-                    for (int localIdx : p.graph.adj[currentPosition[i]]) {
-                        const Edge &edge = p.graph.edges[currentPosition[i]][localIdx];
-                        if ((edge.start == currentPosition[i] && edge.end == nextNode) ||
-                            (edge.start == nextNode && edge.end == currentPosition[i])) {
-                            edgeFound = true;
-                            // If the edge is blocked (i.e., cost is INF), then we replan.
-                            if (computeEdgeCost(p.graph, edge) >= INF)
-                                needReplan = true;
-                            break;
+                int nextNode = vehicleRoutes[i][1];
+                bool edgeFound = false;
+                bool canProceed = false;
+                // Check for the edge from currentPosition[i] to nextNode.
+                for (int localIdx = 0; localIdx < p.graph.edges[currentPosition[i]].size(); localIdx++) {
+                    const Edge &edge = p.graph.edges[currentPosition[i]][localIdx];
+                    if ((edge.start == currentPosition[i] && edge.end == nextNode) ||
+                        (edge.start == nextNode && edge.end == currentPosition[i])) {
+                        edgeFound = true;
+                        cout << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
+                             << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
+                             << ", load = " << edge.load << ", capacity = " << edge.capacity << endl;
+                        if (edge.load < edge.capacity) {
+                            canProceed = true;
                         }
+                        break;
                     }
-                    if (!edgeFound)
-                        needReplan = true;
+                }
+                if (!edgeFound) {
+                    cout << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
+                         << " to " << nextNode << ". Replanning." << endl;
+                    needReplan = true;
+                } else if (!canProceed) {
+                    cout << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
+                         << " because edge to " << nextNode << " is full." << endl;
+                    continue;
                 }
             }
             
@@ -189,29 +204,34 @@ void simulate_discrete_time(Problem &p) {
                 bool found = a_star(p.graph, currentPosition[i], p.cars[i].dest, newRoute);
                 if (found) {
                     vehicleRoutes[i] = newRoute;
+                    cout << "[DEBUG] Vehicle " << i << " replanned route: ";
+                    for (int node : newRoute)
+                        cout << node << " ";
+                    cout << endl;
                 } else {
-                    cout << "Vehicle " << i << " is stuck at node " << currentPosition[i] << endl;
+                    cout << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << endl;
                     reachedDestination[i] = true;
                     continue;
                 }
             }
             
-            // If the route has only one vertex, then the destination is reached.
             if (vehicleRoutes[i].size() <= 1) {
                 reachedDestination[i] = true;
+                cout << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << endl;
                 continue;
             }
             
-            // Advance along one edge: remove the current position and update currentPosition to next.
+            // Advance one edge.
             vehicleRoutes[i].erase(vehicleRoutes[i].begin());
             currentPosition[i] = vehicleRoutes[i][0];
-            overallPaths[i].push_back(currentPosition[i]);
+            overallPaths[i].push_back(currentPosition[i]); // Record the move.
+            cout << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << endl;
         }
         
-        // After all vehicles have advanced this tick, update edge loads based on overallPaths.
-        update_edge_loads(p.graph, overallPaths);
+        // Update edge loads based only on the moves of this tick.
+        update_edge_loads_current(p.graph, prevPositions, currentPosition);
         
-        // For debugging: Print current positions.
+        // Print current positions.
         cout << "After tick " << tick << ", vehicle positions:" << endl;
         for (int i = 0; i < numVehicles; i++) {
             cout << "Vehicle " << i << " is at node " << currentPosition[i];
@@ -220,21 +240,16 @@ void simulate_discrete_time(Problem &p) {
             cout << endl;
         }
         
-        // Check if all vehicles have reached their destination.
         anyNotDone = false;
         for (int i = 0; i < numVehicles; i++) {
-            if (!reachedDestination[i]) {
-                anyNotDone = true;
-                break;
-            }
+            if (!reachedDestination[i]) { anyNotDone = true; break; }
         }
-        
         tick++;
-        if (tick > 10000) break; // safety limit
+        if (tick > 100000) break;  // Safety limit.
     }
-
-    // Print the complete movement histories.
-    cout << "Final routes (complete movement histories):" << endl;
+    
+    // Print final overall movement histories.
+    cout << "Final overall routes (complete movement histories):" << endl;
     for (int i = 0; i < numVehicles; i++) {
         cout << "Vehicle " << i << ": ";
         for (int node : overallPaths[i])
