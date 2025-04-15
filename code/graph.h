@@ -14,9 +14,16 @@
 
 /**
  * @name                Vertex
- * @details             It's just an int labeling all the verticies in the graph
+ * @details             It's a vertex in the graph
+ * 
+ * @param id            The numerical id of the vertex
+ * @param x             The x coodinate of the vertex
+ * @param y             The y coordinate of the vertex
  */
-typedef int Vertex;
+struct Vertex {
+    int id;
+    int x,y;
+};
 
 /**
  * @name                Edge
@@ -31,8 +38,7 @@ typedef int Vertex;
  * @param costs         A map from a time slice (integer) to the realtime cost
  */
 struct Edge {
-    Vertex start, end;
-    int base_cost;
+    int start, end;
     int capacity;
     int load;
     std::map<int, int> costs;
@@ -46,17 +52,23 @@ struct Edge {
  * @param dest          The ending vertex of the car
  */
 struct Car {
-    Vertex src;
-    Vertex dest;
+    int src;
+    int dest;
 };
 
 /**
  * @name                Graph
- * @details             It's a vector of vector of edges. Each index in the inital
- *                      vector tells you which is the starting edge. The inner 
- *                      vector is just a list of edges.
+ * @details             Enumerates Verticies, Edges, and adjacency matrix
+ * 
+ * @param vertices      A list of all the vertices in the graph
+ * @param edges         A list of all the edges in the graph
+ * @param adj           An adjacency matrix format for all the edges
  */
-typedef std::vector<std::vector<Edge>> Graph;
+struct Graph {
+    std::vector<Vertex> vertices;
+    std::vector<std::vector<Edge>> edges;
+    std::vector<std::vector<int>> adj;
+};
 
 /**
  * @name                Problem
@@ -84,6 +96,24 @@ struct Problem {
 Problem load_problem(std::string &fname);
 
 /**
+ * @name                save_problem
+ * @details             Turns a problem instance into a string and pushes it to 
+ *                      stdout
+ * 
+ * @param[in] p         A problem instance which we will print
+ */
+void save_problem(const Problem &p);
+
+/**
+ * @name                calculate_adj_matrix
+ * @details             calulates adjacency matrix based on Edges
+ * 
+ * @param[in] edges     a vector of vector of edges
+ * @returns             an adjacency matrix with a 1 where an edge exists and 0 otherwise
+ */
+std::vector<std::vector<int>> calculate_adj_matrix(std::vector<std::vector<Edge>> edges);
+
+/**
  * @name                print_graph
  * @details             Prints all the information associated with a graph.
  * 
@@ -92,12 +122,11 @@ Problem load_problem(std::string &fname);
 void print_graph(const Graph &g);
 
 /**
- * @name                save_problem
- * @details             Turns a problem instance into a string and pushes it to 
- *                      stdout
+ * @name                print_adj_mat
+ * @details             Prints the adjacency matrix
  * 
- * @param[in] p         A problem instance which we will print
+ * @param[in] adj       An adjacency matrix which we will print
  */
-void save_problem(const Problem &p);
+void print_adj_mat(const std::vector<std::vector<int>> &adj);
 
 #endif // GRAPH

@@ -9,10 +9,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <math.h>
 #include "graph.h"
 
 
-#define VERTICIES 4096
+#define VERTICES 4096
 
 /**
  * @name     get_rand_Nedges
@@ -39,8 +40,9 @@ int get_rand_Nedges() {
  * @name     get_rand_cost
  * @details  Get the cost to traverse this edge    
  */
-int get_rand_cost() {
-    return (random() % 10) + 1;
+int get_rand_coord() {
+    int root = (int) sqrt(VERTICES);
+    return (random() % (2 * root)) + 1;
 }
 
 /**
@@ -64,7 +66,7 @@ int get_rand_capacity() {
     }
 }
 
-bool in(Vertex v, std::vector<Edge> e) {
+bool in(int v, std::vector<Edge> e) {
     for (int i = 0; i < e.size(); i++) {
         if (e[i].start == v || e[i].end == v) {
             return true;
@@ -73,25 +75,45 @@ bool in(Vertex v, std::vector<Edge> e) {
     return false;
 }
 
+bool in(Vertex v, std::vector<Vertex> vertices) {
+    for (Vertex u : vertices) {
+        if ((v.x == u.x) && (v.y == u.y))
+            return true;
+    }
+    return false;
+}
+
 int main(int argc, char *argv[]) {  
     int N_CARS = 0;
     if (argc > 1)
         N_CARS = std::atoi(argv[1]);
+
+    
+    // Generate Verticies
+    std::vector<Vertex> vertices;
+    for (int i = 0; i < VERTICES; i++) {
+        Vertex v = {i, get_rand_coord(), get_rand_coord()};
+        while (in(v, vertices)) {
+            v.x = get_rand_coord();
+            v.y = get_rand_coord();
+        }
+        vertices.push_back(v);
+    }
     
 
-    Graph g(VERTICIES);
+    std::vector<std::vector<Edge>> edges(VERTICES);
 
-    std::vector<Vertex> connected;
+    std::vector<int> connected;
     
     // Initalize the number of edges
-    std::vector<int> free_edges(VERTICIES);
-    for (int i = 0; i < VERTICIES; i++) {
+    std::vector<int> free_edges(VERTICES);
+    for (int i = 0; i < VERTICES; i++) {
         free_edges[i] = get_rand_Nedges();
     }
 
     // Initalize Bag
-    std::vector<Vertex> bag(VERTICIES);
-    for (int i = 0; i < VERTICIES; i++) {
+    std::vector<int> bag(VERTICES);
+    for (int i = 0; i < VERTICES; i++) {
         bag[i] = i;
     }
 
@@ -107,11 +129,10 @@ int main(int argc, char *argv[]) {
                 v = connected[random() % connected.size()];
             }
 
-            int cost = get_rand_cost();
             int capacity = get_rand_capacity();
 
-            g[bag[u]].push_back({bag[u], v, cost, capacity, 0, std::map<int, int>()});
-            g[v].push_back({v, bag[u], cost, capacity, 0, std::map<int, int>()});
+            edges[bag[u]].push_back({bag[u], v, capacity, 0, std::map<int, int>()});
+            edges[v].push_back({v, bag[u], capacity, 0, std::map<int, int>()});
             
             free_edges[v]--;
             free_edges[bag[u]]--;
@@ -131,15 +152,14 @@ int main(int argc, char *argv[]) {
                 break;
             }
             int v = connected[random() % connected.size()];
-            while (free_edges[v] <= 0 || in(v, g[u])) {
+            while (free_edges[v] <= 0 || in(v, edges[u])) {
                 v = connected[random() % connected.size()];
             }
 
-            int cost = get_rand_cost();
             int capacity = get_rand_capacity();
 
-            g[u].push_back({u, v, cost, capacity, 0, std::map<int, int>()});
-            g[v].push_back({v, u, cost, capacity, 0, std::map<int, int>()});
+            edges[u].push_back({u, v, capacity, 0, std::map<int, int>()});
+            edges[v].push_back({v, u, capacity, 0, std::map<int, int>()});
             
             free_edges[v]--;
             free_edges[u]--;
@@ -149,13 +169,16 @@ int main(int argc, char *argv[]) {
     // Generate all the Cars
     std::vector<Car> c;
     for (int i = 0; i < N_CARS; i++) {
-        int src = random() % VERTICIES;
-        int dest = random() % VERTICIES;
+        int src = random() % VERTICES;
+        int dest = random() % VERTICES;
         while (dest == src) {
-            dest = random() % VERTICIES;
+            dest = random() % VERTICES;
         }
         c.push_back({src, dest});
     }
+
+    // Generate the graph
+    Graph g = {vertices, edges, std::vector<std::vector<int>>()};
 
     //save to file
     Problem p = {g, c};

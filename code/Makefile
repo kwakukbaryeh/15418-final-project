@@ -1,10 +1,10 @@
 CXX = g++
-CXXFLAGS = -O0 -g -std=c++11 -Wall -Wextra
+CXXFLAGS = -O0 -g -std=c++11 -Wall -Wextra -lm
 
-all: main
+all: main tests
 
 tests:
-	$(CXX) $(CXXFLAGS) -o mktests mktests.cpp
+	$(CXX) $(CXXFLAGS) -o mktests mktests.cpp graph.cpp graph.h
 
 main:
 	$(CXX) $(CXXFLAGS) -o main main.cpp graph.cpp graph.h
