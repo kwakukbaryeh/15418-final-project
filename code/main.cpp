@@ -1,5 +1,8 @@
 #include "graph.h"
 
+/**
+ * `make clean; make; ./main <input_file>`
+ */
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Please provide a file name!\n");

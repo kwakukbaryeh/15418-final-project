@@ -83,6 +83,10 @@ bool in(Vertex v, std::vector<Vertex> vertices) {
     return false;
 }
 
+/**
+ * To Use this to generate tests set VERTICES to the number of verticies in your graph and run 
+ * `make clean; make; ./mktests <number_of_cars>`
+ */
 int main(int argc, char *argv[]) {  
     int N_CARS = 0;
     if (argc > 1)
