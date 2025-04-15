@@ -6,12 +6,33 @@
 #include <iostream>
 using namespace std;
 
-// Heuristic function: Euclidean distance between nodes a and b.
-float heuristic(const Node &a, const Node &b) {
-    return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+
+
+// Return the minimum base cost among all edges in the graph.
+float getMinimumEdgeCost(const Graph &graph) {
+    float minCost = INF;
+    for (const Edge &edge : graph.edges) {
+        if (edge.base_cost < minCost)
+            minCost = edge.base_cost;
+    }
+    return minCost;
 }
 
-// A* search
+// New cost-based heuristic function.
+
+// We use Manhattan distance between the nodes multiplied by the minimum edge cost as a lower-bound estimate of cost from 'current' to 'goal'.
+float cost_heuristic(const Graph &graph, int current, int goal) {
+    // Calculate Manhattan distance.
+    float dx = fabs(graph.nodes[current].x - graph.nodes[goal].x);
+    float dy = fabs(graph.nodes[current].y - graph.nodes[goal].y);
+    float manhattan = dx + dy;
+    // Get the minimal cost among all edges.
+    float minCost = getMinimumEdgeCost(graph);
+    // Estimated cost is Manhattan distance multiplied by the minimal edge cost.
+    return manhattan * minCost;
+}
+
+// A* search using our cost-based heuristic.
 bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
     int n = graph.nodes.size();
     vector<float> gScore(n, INF);
@@ -19,11 +40,12 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
     vector<int> cameFrom(n, -1);
     vector<bool> closed(n, false);
     
-    // Priority queue for open set.
+    // Priority queue for open set, which holds nodes to be expanded.
+    // It uses AStarNode objects stored in a vector, and 'greater<AStarNode>' to make a min-heap (lowest fScore first).
     priority_queue<AStarNode, vector<AStarNode>, greater<AStarNode>> openSet;
     
     gScore[start] = 0.0;
-    fScore[start] = heuristic(graph.nodes[start], graph.nodes[goal]);
+    fScore[start] = cost_heuristic(graph, start, goal);
     openSet.push({start, gScore[start], fScore[start], -1});
     
     while (!openSet.empty()) {
@@ -31,7 +53,7 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
         openSet.pop();
         
         if (current.id == goal) {
-            // Reconstruct the path.
+            // Reconstruct the path from goal back to start using cameFrom.
             int cur = goal;
             path.clear();
             while (cur != -1) {
@@ -44,23 +66,25 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
         
         if (closed[current.id]) continue;
         closed[current.id] = true;
+        // Record the predecessor for path reconstruction.
         cameFrom[current.id] = current.parent;
         
+        // Expand all neighbors of the current node.
         for (int edgeIdx : graph.adj[current.id]) {
             const Edge &edge = graph.edges[edgeIdx];
             int neighbor = (edge.start == current.id) ? edge.end : edge.start;
             if (closed[neighbor]) continue;
             
-            float tentative_gScore = gScore[current.id] + edge.curr_weight;
+            float tentative_gScore = gScore[current.id] + edge.curr_cost;
             if (tentative_gScore < gScore[neighbor]) {
                 gScore[neighbor] = tentative_gScore;
-                fScore[neighbor] = tentative_gScore + heuristic(graph.nodes[neighbor], graph.nodes[goal]);
+                fScore[neighbor] = tentative_gScore + cost_heuristic(graph, neighbor, goal);
                 cameFrom[neighbor] = current.id;
                 openSet.push({neighbor, gScore[neighbor], fScore[neighbor], current.id});
             }
         }
     }
-    return false; // No path found.
+    return false; // Return false if no path is found.
 }
 
 // Reset and update edge loads based on the given vehicle routes.
@@ -69,12 +93,12 @@ void update_edge_loads(Graph &graph, const vector<vector<int>> &vehicle_routes) 
     for (auto &edge : graph.edges) {
         edge.load = 0;
     }
-    // Increment load for each edge used in vehicle routes.
+    // For each vehicle route, increment the load on the edges that are traversed.
     for (const auto &route : vehicle_routes) {
         for (size_t i = 0; i + 1 < route.size(); i++) {
             int u = route[i];
             int v = route[i+1];
-            // Find the edge connecting u and v.
+            // Look for the edge between u and v (bidirectional check).
             for (int edgeIdx : graph.adj[u]) {
                 const Edge &e = graph.edges[edgeIdx];
                 if ((e.start == u && e.end == v) || (e.start == v && e.end == u)) {
@@ -86,117 +110,179 @@ void update_edge_loads(Graph &graph, const vector<vector<int>> &vehicle_routes) 
     }
 }
 
-// Update current weights for edges based on congestion (load exceeding capacity).
+// Update current weights for edges based on congestion (when load exceeds capacity).
 void update_edge_weights(Graph &graph) {
     for (auto &edge : graph.edges) {
         if (edge.load > edge.capacity) {
-            // Example: increase weight proportionally to overload.
-            edge.curr_weight = edge.base_weight * (1.0 + CONGESTION_FACTOR * (edge.load - edge.capacity));
+            // Increase weight proportionally to the overload.
+            edge.curr_cost = edge.base_cost * (1.0 + CONGESTION_FACTOR * (edge.load - edge.capacity));
         } else {
-            edge.curr_weight = edge.base_weight;
+            edge.curr_cost = edge.base_cost;
         }
     }
 }
 
-// Graph with 4 nodes in a square and diagonals.
-Graph create_test_graph() {
-    Graph graph;
-    graph.nodes = {
-        {0, 0.0, 0.0},
-        {1, 1.0, 0.0},
-        {2, 0.0, 1.0},
-        {3, 1.0, 1.0}
-    };
-    // Define edges: square perimeter and two diagonals.
-    // Each edge has a capacity of 1.
-    graph.edges = {
-        {0, 1, 1.0, 1.0, 1, 0},    // edge 0: between node 0 and 1
-        {1, 3, 1.0, 1.0, 1, 0},    // edge 1: between node 1 and 3
-        {3, 2, 1.0, 1.0, 1, 0},    // edge 2: between node 3 and 2
-        {2, 0, 1.0, 1.0, 1, 0},    // edge 3: between node 2 and 0
-        {0, 3, 1.414, 1.414, 1, 0},// edge 4: diagonal between 0 and 3
-        {1, 2, 1.414, 1.414, 1, 0} // edge 5: diagonal between 1 and 2
-    };
-    
-    // Build the adjacency list.
-    graph.adj.resize(graph.nodes.size());
-    for (int i = 0; i < graph.edges.size(); i++) {
-        int u = graph.edges[i].start;
-        int v = graph.edges[i].end;
-        graph.adj[u].push_back(i);
-        graph.adj[v].push_back(i);
+
+// We assume time advances in “ticks.” At each tick:
+//   1. For every vehicle that has not reached its destination:
+//        a. If it has no current planned route (or the next segment's cost
+//           is significantly worse than the base cost * threshold),
+//           compute a new route from its current position (using A*).
+//        b. Then, advance the vehicle by one edge along its route.
+//        c. Record the edge the vehicle just traversed (for updating load).
+//   2. After all vehicles have advanced, update edge loads and dynamic costs.
+//   3. Continue until all vehicles reach their destination.
+void simulate_discrete_time(Problem &p) {
+    // For each vehicle, maintain its current position (initialized to its source)
+    // and its current planned route (a sequence of node IDs).
+    int numVehicles = p.cars.size();
+    vector<int> currentPosition(numVehicles);
+    vector<vector<int>> vehicleRoutes(numVehicles); // current planned route (including current position)
+    vector<bool> reachedDestination(numVehicles, false);
+    vector<vector<int>> overallPaths(numVehicles);  // history of moves for reporting
+
+    // Initially, each vehicle starts at its source.
+    for (int i = 0; i < numVehicles; i++) {
+        currentPosition[i] = p.cars[i].src;
+        overallPaths[i].push_back(currentPosition[i]);
+    }
+
+    bool anyNotDone = true;
+    int tick = 0;
+    while (anyNotDone) {
+        cout << "Tick " << tick << ":" << endl;
+        // Reset edge loads for this tick’s movement.
+        // We'll compute individual movements then update graph congestion.
+        vector<vector<int>> tickRoutes; // keep the edge movements for load update
+        tickRoutes.resize(p.graph.edges.size()); // not strictly needed if update_edge_loads is re-worked
+
+        // For each vehicle, if not at destination, decide what to do.
+        for (int i = 0; i < numVehicles; i++) {
+            if (reachedDestination[i]) continue;
+
+            // Check if the vehicle already has a route.
+            // We decide to replan if either it has no route or if the next segment’s dynamic cost
+            // is significantly higher than its base cost (i.e. congested beyond threshold).
+            bool needReplan = false;
+            if (vehicleRoutes[i].empty()) {
+                needReplan = true;
+            } else {
+                // Get the next node in the route (after the current position).
+                int nextNode = vehicleRoutes[i][1]; // vehicleRoutes[i][0] should equal currentPosition[i].
+                // Find the edge from currentPosition[i] to nextNode.
+                bool foundEdge = false;
+                for (int edgeIdx : p.graph.adj[currentPosition[i]]) {
+                    const Edge &e = p.graph.edges[edgeIdx];
+                    if ((e.start == currentPosition[i] && e.end == nextNode) ||
+                        (e.start == nextNode && e.end == currentPosition[i])) {
+                        foundEdge = true;
+                        // If the dynamic cost is significantly higher than the base cost,
+                        // then replan.
+                        if (e.curr_cost > REPLAN_THRESHOLD * e.base_cost) {
+                            needReplan = true;
+                        }
+                        break;
+                    }
+                }
+                if (!foundEdge)
+                    needReplan = true;
+            }
+            
+            // If we need to plan or replan, compute a new route from currentPosition[i] to destination.
+            if (needReplan) {
+                vector<int> newRoute;
+                bool found = a_star(p.graph, currentPosition[i], p.cars[i].dest, newRoute);
+                if (found) {
+                    vehicleRoutes[i] = newRoute;
+                } else {
+                    // If no route is found, the vehicle is stuck.
+                    cout << "Vehicle " << i << " is stuck at node " << currentPosition[i] << endl;
+                    reachedDestination[i] = true;
+                    continue;
+                }
+            }
+            
+            // Advance vehicle by one edge (one tick) along its planned route.
+            // If the current route has only one element, the vehicle is at destination.
+            if (vehicleRoutes[i].size() <= 1) {
+                reachedDestination[i] = true;
+                continue;
+            }
+            // Remove the first element (current position) and set the new current position.
+            // (The edge traversed is from old currentPosition to new currentPosition.)
+            int oldPos = currentPosition[i];
+            vehicleRoutes[i].erase(vehicleRoutes[i].begin()); // remove current position
+            currentPosition[i] = vehicleRoutes[i][0];
+            overallPaths[i].push_back(currentPosition[i]);
+            // (Optionally, record the edge movement for load update if needed.)
+        }
+        
+        // After all vehicles have advanced in this tick, update edge loads and dynamic costs.
+        // To update loads, we need to know which edges were used in this tick.
+        // Here, we can recompute loads from scratch using the overallPaths history.
+        // One approach is to extract, for each vehicle, the last edge it just traversed.
+        vector<vector<int>> tickEdgeRoutes;
+        for (int i = 0; i < numVehicles; i++) {
+            if (overallPaths[i].size() >= 2) {
+                // The edge traversed in this tick is (overallPaths[i][end-2], overallPaths[i][end-1])
+                vector<int> route = { overallPaths[i][overallPaths[i].size()-2],
+                                       overallPaths[i][overallPaths[i].size()-1] };
+                tickEdgeRoutes.push_back(route);
+            }
+        }
+        // Instead of having an update_edge_loads that takes entire routes,
+        // we write a simple loop here to increment load on edges that match these movements.
+        // For simplicity, we clear loads and recompute from overallPaths:
+        for (auto &edge : p.graph.edges) {
+            edge.load = 0;
+        }
+        // For each vehicle’s overall path, for each adjacent pair, update load:
+        for (int i = 0; i < numVehicles; i++) {
+            for (size_t j = 0; j + 1 < overallPaths[i].size(); j++) {
+                int u = overallPaths[i][j];
+                int v = overallPaths[i][j+1];
+                for (int edgeIdx : p.graph.adj[u]) {
+                    const Edge &e = p.graph.edges[edgeIdx];
+                    if ((e.start == u && e.end == v) || (e.start == v && e.end == u)) {
+                        p.graph.edges[edgeIdx].load++;
+                        break;
+                    }
+                }
+            }
+        }
+        // Update edge weights based on the new loads.
+        update_edge_weights(p.graph);
+
+        // Print the current positions (and/or remaining routes) for debugging.
+        cout << "After tick " << tick << ", vehicle positions:" << endl;
+        for (int i = 0; i < numVehicles; i++) {
+            cout << "Vehicle " << i << " is at node " << currentPosition[i];
+            if (reachedDestination[i])
+                cout << " [DEST]" << endl;
+            else
+                cout << endl;
+        }
+        
+        // Check if all vehicles have reached their destination.
+        anyNotDone = false;
+        for (int i = 0; i < numVehicles; i++) {
+            if (!reachedDestination[i]) {
+                anyNotDone = true;
+                break;
+            }
+        }
+        tick++;
+        // Maximum tick limit to avoid an infinite loop.)
+        if (tick > 10000) break;
     }
     
-    return graph;
+    // Finally, print the full paths taken by each vehicle.
+    cout << "Final routes (complete movement histories):" << endl;
+    for (int i = 0; i < numVehicles; i++) {
+        cout << "Vehicle " << i << ": ";
+        for (int node : overallPaths[i])
+            cout << node << " ";
+        cout << endl;
+    }
 }
 
-
-Graph create_large_test_graph(int rows, int cols) {
-    Graph graph;
-    
-    for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-            Node node;
-            node.id = r * cols + c;
-            node.x = (float)c;
-            node.y = (float)r;
-            graph.nodes.push_back(node);
-        }
-    }
-    
-    for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-            int current = r * cols + c;
-            if (c < cols - 1) {
-                int right = r * cols + (c + 1);
-                Edge e;
-                e.start = current; e.end = right;
-                e.base_weight = 1.0;
-                e.curr_weight = 1.0;
-                e.capacity = 1;
-                e.load = 0;
-                graph.edges.push_back(e);
-            }
-            if (r < rows - 1) {
-                int down = (r + 1) * cols + c;
-                Edge e;
-                e.start = current; e.end = down;
-                e.base_weight = 1.0;
-                e.curr_weight = 1.0;
-                e.capacity = 1;
-                e.load = 0;
-                graph.edges.push_back(e);
-            }
-            if (r < rows - 1 && c < cols - 1) {
-                int downRight = (r + 1) * cols + (c + 1);
-                Edge e;
-                e.start = current; e.end = downRight;
-                e.base_weight = 1.414; 
-                e.curr_weight = 1.414;
-                e.capacity = 1;
-                e.load = 0;
-                graph.edges.push_back(e);
-            }
-            if (r < rows - 1 && c > 0) {
-                int downLeft = (r + 1) * cols + (c - 1);
-                Edge e;
-                e.start = current; e.end = downLeft;
-                e.base_weight = 1.414;
-                e.curr_weight = 1.414;
-                e.capacity = 1;
-                e.load = 0;
-                graph.edges.push_back(e);
-            }
-        }
-    }
-    
-    graph.adj.resize(graph.nodes.size());
-    for (int i = 0; i < graph.edges.size(); i++) {
-        int u = graph.edges[i].start;
-        int v = graph.edges[i].end;
-        graph.adj[u].push_back(i);
-        graph.adj[v].push_back(i);
-    }
-    
-    return graph;
-}

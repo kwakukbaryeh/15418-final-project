@@ -5,99 +5,105 @@
  *                  Kwaku Baryeh (kbaryeh@andrew.cmu.edu)
  */
 
-#ifndef GRAPH
-#define GRAPH
-
-#include <vector>
-#include <map>
-#include <string>
-
-/**
- * @name                Vertex
- * @details             It's just an int labeling all the verticies in the graph
- */
-typedef int Vertex;
-
-/**
- * @name                Edge
- * @details             It's a tuple of start and end verticies for the edge along
- *                      with the time it takes to traverse the edge and a map from
- *                      time slices to cost, which allows us to see the dynamic
- *                      cost to traverse this edge at a given time.
- * 
- * @param start         The starting vertex of the edge
- * @param end           The ending vertex of the edge
- * @param base_cost     The minimum time (in min) it takes to traverse this edge
- * @param costs         A map from a time slice (integer) to the realtime cost
- */
-struct Edge {
-    Vertex start, end;
-    int base_cost;
-    int capacity;
-    int load;
-    std::map<int, int> costs;
-};
-
-/**
- * @name                Car
- * @details             It's a vehicle which wants to go from point A to point B
- * 
- * @param src           The starting vertex of the car
- * @param dest          The ending vertex of the car
- */
-struct Car {
-    Vertex src;
-    Vertex dest;
-};
-
-/**
- * @name                Graph
- * @details             It's a vector of vector of edges. Each index in the inital
- *                      vector tells you which is the starting edge. The inner 
- *                      vector is just a list of edges.
- */
-typedef std::vector<std::vector<Edge>> Graph;
-
-/**
- * @name                Problem
- * @details             It contains a Graph and a list of Cars which need to be 
- *                      routed.
- * 
- * @param graph         Is the graph which we will route vehicles on
- * @param cars          Is a list of cars that we need to route
- */
-struct Problem {
-    Graph graph;
-    std::vector<Car> cars;
-};
-
-/**
- * @name                load_problem
- * @details             loads the problem 
- * 
- * @param[in] fname     A file name from which to load the problem details (Graph 
- *                      and Cars)
- * 
- * @return              Problem structure packed with the problem data loaded 
- *                      from the file   
- */
-Problem load_problem(std::string &fname);
-
-/**
- * @name                print_graph
- * @details             Prints all the information associated with a graph.
- * 
- * @param[in] g         A graph which we will print
- */
-void print_graph(const Graph &g);
-
-/**
- * @name                save_problem
- * @details             Turns a problem instance into a string and pushes it to 
- *                      stdout
- * 
- * @param[in] p         A problem instance which we will print
- */
-void save_problem(const Problem &p);
-
-#endif // GRAPH
+ #ifndef GRAPH
+ #define GRAPH
+ 
+ #include <vector>
+ #include <map>
+ #include <string>
+ using namespace std;
+ 
+ /**
+  * @name Vertex
+  * @details It's just an int labeling all the vertices in the graph.
+  */
+ typedef int Vertex;
+ 
+ /**
+  * @name Node
+  * @details Represents a node (vertex) in the graph with its coordinates.
+  */
+ struct Node {
+     int id;
+     float x, y;
+ };
+ 
+ /**
+  * @name Edge
+  * @details Represents an edge in the graph along with its attributes.
+  *          - start: the starting vertex.
+  *          - end: the ending vertex.
+  *          - base_cost: the nominal travel time (or distance) under ideal conditions.
+  *          - capacity: the maximum number of vehicles allowed concurrently.
+  *          - load: the current number of vehicles on the edge.
+  *          - costs: a map from a time slice (integer) to the dynamic travel cost.
+  *          - curr_cost: the current (possibly congested) travel cost.
+  */
+ struct Edge {
+     Vertex start, end;
+     int base_cost;
+     int capacity;
+     int load;
+     std::map<int, int> costs;
+     int curr_cost;
+ };
+ 
+ /**
+  * @name Graph
+  * @details The Graph structure now contains:
+  *          - nodes: a vector of Node, containing each node's ID and coordinates.
+  *          - edges: a vector of Edge, representing all edges in the graph.
+  *          - adj: an adjacency list where each entry is a vector of indices into the 'edges' vector
+  *                 representing edges incident to that node.
+  */
+ struct Graph {
+     vector<Node> nodes;
+     vector<Edge> edges;
+     vector<vector<int>> adj;
+ };
+ 
+ /**
+  * @name Car
+  * @details Represents a vehicle which wants to go from point A to point B.
+  */
+ struct Car {
+     Vertex src;
+     Vertex dest;
+ };
+ 
+ /**
+  * @name Problem
+  * @details Contains a Graph and a list of Cars to be routed.
+  */
+ struct Problem {
+     Graph graph;
+     vector<Car> cars;
+ };
+ 
+ /**
+  * @name load_problem
+  * @details Loads the problem details (graph and cars) from a file.
+  *
+  * @param[in] fname The file name to load from.
+  * @return A Problem instance containing the parsed graph and car data.
+  */
+ Problem load_problem(string &fname);
+ 
+ /**
+  * @name print_graph
+  * @details Prints all the information associated with a graph.
+  *
+  * @param[in] g The graph to print.
+  */
+ void print_graph(const Graph &g);
+ 
+ /**
+  * @name save_problem
+  * @details Serializes and prints a Problem instance.
+  *
+  * @param[in] p The problem instance to print.
+  */
+ void save_problem(const Problem &p);
+ 
+ #endif // GRAPH
+ 

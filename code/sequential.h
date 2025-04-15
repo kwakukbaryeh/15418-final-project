@@ -1,69 +1,49 @@
 #ifndef SEQUENTIAL_H
 #define SEQUENTIAL_H
 
+#include "graph.h"  // Contains definitions for Node, Edge, Graph, Car, Problem, etc.
 #include <vector>
 using namespace std;
 
 const float INF = 1e9;
-const float CONGESTION_FACTOR = 1.0;   // Increase multiplier for overloaded edges
-const int MAX_ITER = 10;               // Maximum number of re-routing iterations
+const float CONGESTION_FACTOR = 1.0;   // Multiplier for overload on an edge.
+const float REPLAN_THRESHOLD = 1.2;    // If an edge's cost is 20% over its base cost, trigger re-planning.
 
-// Structure for a node in the graph
-struct Node {
-    int id;
-    float x, y;
-};
-
-// Structure for an edge in the graph
-struct Edge {
-    int start, end;         // Node IDs for endpoints (undirected)
-    float base_weight;      // Nominal travel time/distance
-    float curr_weight;      // Dynamically adjusted weight (based on congestion)
-    int capacity;           // Maximum vehicles allowed concurrently
-    int load;               // Current number of vehicles using the edge
-};
-
-// Graph structure containing nodes, edges, and the adjacency list.
-struct Graph {
-    vector<Node> nodes;
-    vector<Edge> edges;
-    // For each node, a vector of indices into "edges" representing incident edges.
-    vector<vector<int>> adj;
-};
-
-// Vehicle query: specifies source and destination node IDs.
-struct Vehicle {
-    int source;
-    int destination;
-};
-
-// Structure for nodes used in A* search
+// Structure for nodes used in A* search.
 struct AStarNode {
     int id;
-    float g;       // Cost from start
-    float f;       // f = g + heuristic estimate
-    int parent;    // Parent node id (for path reconstruction)
-    // Operator for priority queue ordering (min-heap)
+    float g;       // Cost from the start.
+    float f;       // f = g + heuristic estimate.
+    int parent;    // Parent node id (for path reconstruction).
+    // Operator overload to ensure the priority queue works as a min-heap.
     bool operator>(const AStarNode &other) const {
         return f > other.f;
     }
 };
 
-// Function prototypes
-// Heuristic: Euclidean distance between two nodes.
-float heuristic(const Node &a, const Node &b);
+// Function prototypes for our sequential congestion-aware routing implementation:
 
-// A* search: returns true if a path is found; the path is stored in 'path'.
+// Returns the minimum base cost among all edges in the graph.
+float getMinimumEdgeCost(const Graph &graph);
+
+// Computes the cost-based heuristic using Manhattan distance multiplied by
+// the global minimum edge cost (a lower-bound estimate) for the route from 'current' to 'goal'.
+float cost_heuristic(const Graph &graph, int current, int goal);
+
+// A* search using the cost-based heuristic and dynamic (congestion aware) edge costs.
+// Returns true if a path is found; the resulting path (node IDs) is stored in 'path'.
 bool a_star(const Graph &graph, int start, int goal, vector<int> &path);
 
-// Update edge loads based on the current set of vehicle routes.
+// Updates the load on each edge based on a vector of vehicle routes.
 void update_edge_loads(Graph &graph, const vector<vector<int>> &vehicle_routes);
 
-// Update the current weight on each edge based on its current load.
+// Updates each edge's current weight based on its load (congestion status).
 void update_edge_weights(Graph &graph);
 
-// Generate a simple test graph.
-Graph create_test_graph();
+// This function advances the simulation in fixed time increments ("ticks").
+// At each tick, it advances vehicles along their routes, updates edge loads and costs,
+// and triggers re-planning for vehicles when necessary.
+void simulate_discrete_time(Problem &p);
 
-Graph create_large_test_graph(int rows, int cols);
+
 #endif // SEQUENTIAL_H
