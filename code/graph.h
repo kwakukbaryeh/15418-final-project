@@ -21,9 +21,9 @@
   *          -  y: the y-coordinate for the vertex
   */
  struct Vertex {
-     int id;
-     int x, y;
- }
+    int id;
+    int x, y;
+ };
  
  
  /**
@@ -38,10 +38,10 @@
   *                   If a time slice is not represented, assume the base cost.
   */
  struct Edge {
-     Vertex start, end;
-     int capacity;
-     int load;
-     std::map<int, int> costs;
+    Vertex start, end;
+    int capacity;
+    int load;
+    std::map<int, int> costs;
  };
  
  /**
@@ -53,9 +53,9 @@
   *                 representing edges incident to that node.
   */
  struct Graph {
-     vector<Node> nodes;
-     vector<Edge> edges;
-     vector<vector<int>> adj;
+    vector<Vertex> nodes;
+    vector<Edge> edges;
+    vector<vector<int>> adj;
  };
  
  /**
@@ -63,8 +63,8 @@
   * @details Represents a vehicle which wants to go from point A to point B.
   */
  struct Car {
-     Vertex src;
-     Vertex dest;
+    Vertex src;
+    Vertex dest;
  };
  
  /**
@@ -72,8 +72,8 @@
   * @details Contains a Graph and a list of Cars to be routed.
   */
  struct Problem {
-     Graph graph;
-     vector<Car> cars;
+    Graph graph;
+    vector<Car> cars;
  };
  
  /**
@@ -102,4 +102,3 @@
  void save_problem(const Problem &p);
  
  #endif // GRAPH
- 
