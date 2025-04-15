@@ -15,37 +15,33 @@
  
  /**
   * @name Vertex
-  * @details It's just an int labeling all the vertices in the graph.
+  * @details It's an intersection between roads on our map.
+  *          - id: an integer id for the vertex
+  *          -  x: the x-coordinate for the vertex
+  *          -  y: the y-coordinate for the vertex
   */
- typedef int Vertex;
- 
- /**
-  * @name Node
-  * @details Represents a node (vertex) in the graph with its coordinates.
-  */
- struct Node {
+ struct Vertex {
      int id;
-     float x, y;
- };
+     int x, y;
+ }
+ 
  
  /**
   * @name Edge
   * @details Represents an edge in the graph along with its attributes.
   *          - start: the starting vertex.
   *          - end: the ending vertex.
-  *          - base_cost: the nominal travel time (or distance) under ideal conditions.
   *          - capacity: the maximum number of vehicles allowed concurrently.
   *          - load: the current number of vehicles on the edge.
   *          - costs: a map from a time slice (integer) to the dynamic travel cost.
-  *          - curr_cost: the current (possibly congested) travel cost.
+  *                   Base cost is now the manhattan distance between 2 verticies.
+  *                   If a time slice is not represented, assume the base cost.
   */
  struct Edge {
      Vertex start, end;
-     int base_cost;
      int capacity;
      int load;
      std::map<int, int> costs;
-     int curr_cost;
  };
  
  /**
