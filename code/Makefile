@@ -12,3 +12,6 @@ main:
 clean:
 	rm -f main mktests *.log ./*.txt
 
+parth:
+	make clean; make; ./mktests 0 > out.log; ./main out.log > main.log 2> err.log; echo "Diff:"; diff out.log main.log
+
