@@ -4,6 +4,7 @@
 #include <limits>
 #include <algorithm>
 #include <iostream>
+#include <chrono>
 using namespace std;
 
 // --------------------------------------------------------------------
@@ -73,10 +74,10 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
                 cur = cameFrom[cur];
             }
             reverse(path.begin(), path.end());
-            cout << "[A*] Found route: ";
-            for (int node : path)
-                cout << node << " ";
-            cout << endl;
+            // cout << "[A*] Found route: ";
+            // for (int node : path)
+            //     cout << node << " ";
+            // cout << endl;
             return true;
         }
 
@@ -130,7 +131,7 @@ void update_edge_loads_current(Graph &graph, const vector<int> &prevPositions, c
             }
         }
         if (!foundEdge) {
-            cout << "[DEBUG] Edge not found for traversal from " << u << " to " << v << endl;
+            // cout << "[DEBUG] Edge not found for traversal from " << u << " to " << v << endl;
         }
     }
 }
@@ -141,6 +142,7 @@ void update_edge_loads_current(Graph &graph, const vector<int> &prevPositions, c
 // we store the previous positions for each tick and update loads only for the current moves.
 // This avoids accumulating congestion from vehicles that have already left an edge.
 void simulate_discrete_time(Problem &p) {
+    auto start_time = std::chrono::steady_clock::now();
     int numVehicles = p.cars.size();
     vector<int> currentPosition(numVehicles);
     vector<int> prevPositions(numVehicles);  // to store previous tick positions
@@ -157,7 +159,7 @@ void simulate_discrete_time(Problem &p) {
     bool anyNotDone = true;
     int tick = 0;
     while (anyNotDone) {
-        cout << "Tick " << tick << ":" << endl;
+        // cout << "Tick " << tick << ":" << endl;
         // Save current positions as previous positions.
         prevPositions = currentPosition;
 
@@ -167,7 +169,7 @@ void simulate_discrete_time(Problem &p) {
                 continue;
             bool needReplan = false;
             if (vehicleRoutes[i].empty() || vehicleRoutes[i].size() < 2) {
-                cout << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << endl;
+                // cout << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << endl;
                 needReplan = true;
             } else {
                 int nextNode = vehicleRoutes[i][1];
@@ -179,9 +181,9 @@ void simulate_discrete_time(Problem &p) {
                     if ((edge.start == currentPosition[i] && edge.end == nextNode) ||
                         (edge.start == nextNode && edge.end == currentPosition[i])) {
                         edgeFound = true;
-                        cout << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
-                             << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
-                             << ", load = " << edge.load << ", capacity = " << edge.capacity << endl;
+                        // cout << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
+                        //      << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
+                        //      << ", load = " << edge.load << ", capacity = " << edge.capacity << endl;
                         if (edge.load < edge.capacity) {
                             canProceed = true;
                         }
@@ -189,12 +191,12 @@ void simulate_discrete_time(Problem &p) {
                     }
                 }
                 if (!edgeFound) {
-                    cout << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
-                         << " to " << nextNode << ". Replanning." << endl;
+                    // cout << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
+                    //      << " to " << nextNode << ". Replanning." << endl;
                     needReplan = true;
                 } else if (!canProceed) {
-                    cout << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
-                         << " because edge to " << nextNode << " is full." << endl;
+                    // cout << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
+                        // << " because edge to " << nextNode << " is full." << endl;
                     continue;
                 }
             }
@@ -204,12 +206,12 @@ void simulate_discrete_time(Problem &p) {
                 bool found = a_star(p.graph, currentPosition[i], p.cars[i].dest, newRoute);
                 if (found) {
                     vehicleRoutes[i] = newRoute;
-                    cout << "[DEBUG] Vehicle " << i << " replanned route: ";
-                    for (int node : newRoute)
-                        cout << node << " ";
-                    cout << endl;
+                    // cout << "[DEBUG] Vehicle " << i << " replanned route: ";
+                    // for (int node : newRoute)
+                    //     cout << node << " ";
+                    // cout << endl;
                 } else {
-                    cout << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << endl;
+                    // cout << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << endl;
                     reachedDestination[i] = true;
                     continue;
                 }
@@ -217,7 +219,7 @@ void simulate_discrete_time(Problem &p) {
             
             if (vehicleRoutes[i].size() <= 1) {
                 reachedDestination[i] = true;
-                cout << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << endl;
+                // cout << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << endl;
                 continue;
             }
             
@@ -225,35 +227,38 @@ void simulate_discrete_time(Problem &p) {
             vehicleRoutes[i].erase(vehicleRoutes[i].begin());
             currentPosition[i] = vehicleRoutes[i][0];
             overallPaths[i].push_back(currentPosition[i]); // Record the move.
-            cout << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << endl;
+            // cout << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << endl;
         }
         
         // Update edge loads based only on the moves of this tick.
         update_edge_loads_current(p.graph, prevPositions, currentPosition);
         
         // Print current positions.
-        cout << "After tick " << tick << ", vehicle positions:" << endl;
-        for (int i = 0; i < numVehicles; i++) {
-            cout << "Vehicle " << i << " is at node " << currentPosition[i];
-            if (reachedDestination[i])
-                cout << " [DEST]";
-            cout << endl;
-        }
+        // cout << "After tick " << tick << ", vehicle positions:" << endl;
+        // for (int i = 0; i < numVehicles; i++) {
+            // cout << "Vehicle " << i << " is at node " << currentPosition[i];
+            // if (reachedDestination[i])
+                // cout << " [DEST]";
+            // cout << endl;
+        // }
         
         anyNotDone = false;
         for (int i = 0; i < numVehicles; i++) {
             if (!reachedDestination[i]) { anyNotDone = true; break; }
         }
         tick++;
-        if (tick > 100000) break;  // Safety limit.
+        if (tick > 10000) break;  // Safety limit.
     }
     
     // Print final overall movement histories.
-    cout << "Final overall routes (complete movement histories):" << endl;
-    for (int i = 0; i < numVehicles; i++) {
-        cout << "Vehicle " << i << ": ";
-        for (int node : overallPaths[i])
-            cout << node << " ";
-        cout << endl;
-    }
+    // cout << "Final overall routes (complete movement histories):" << endl;
+    // for (int i = 0; i < numVehicles; i++) {
+        // cout << "Vehicle " << i << ": ";
+        // for (int node : overallPaths[i])
+            // cout << node << " ";
+        // cout << endl;
+    // }
+    auto end_time = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed = end_time - start_time;
+    cout << "Simulation completed in " << elapsed.count() << " seconds." << endl;
 }
