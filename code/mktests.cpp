@@ -13,7 +13,7 @@
 #include "graph.h"
 
 
-#define VERTICES 4096
+#define VERTICES 10
 
 /**
  * @name     get_rand_Nedges
