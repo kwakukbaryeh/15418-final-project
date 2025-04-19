@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -O0 -g -std=c++11 -Wall -Wextra
+CXXFLAGS = -O0 -g -std=c++11 -Wall -Wextra -lm
 
 OMP_FLAGS = -fopenmp
 
@@ -9,7 +9,7 @@ SEQUENTIAL_SRCS = sequential.cpp test_sequential.cpp
 
 PARALLEL_SRCS = open_mp.cpp test_parallel.cpp
 
-all: main test_sequential test_parallel
+all: main test_sequential test_parallel tests
 
 main:
 	$(CXX) $(CXXFLAGS) -o main main.cpp $(COMMON_SRCS)
@@ -19,6 +19,9 @@ test_sequential:
 
 test_parallel:
 	$(CXX) $(CXXFLAGS) $(OMP_FLAGS) -DPARALLEL -o test_parallel $(PARALLEL_SRCS) $(COMMON_SRCS)
+
+tests:
+	$(CXX) $(CXXFLAGS) -o mktests mktests.cpp graph.cpp graph.h
 
 clean:
 	rm -f main test_sequential test_parallel *.log *.txt
