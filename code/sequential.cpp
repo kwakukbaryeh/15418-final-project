@@ -253,9 +253,12 @@ void simulate_discrete_time(Problem &p) {
     // Print final overall movement histories.
     std::cerr << "Final overall routes (complete movement histories):" << std::endl;
     for (int i = 0; i < numVehicles; i++) {
-        std::cerr << "Vehicle " << i << ": ";
-        for (int node : overallPaths[i])
-            std::cerr << node << " ";
+        std::cerr << i << ":";
+        for (size_t j = 0; j < overallPaths[i].size(); j++) {
+            std::cerr << overallPaths[i][j];
+            if (j < overallPaths[i].size() - 1)
+                std::cerr << ",";
+        }
         std::cerr << std::endl;
     }
     auto end_time = std::chrono::steady_clock::now();
