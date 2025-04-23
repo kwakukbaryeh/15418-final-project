@@ -89,20 +89,33 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
         closed[current.id] = true;
         cameFrom[current.id] = current.parent;
 
-        // Iterate directly over the edges from current node.
-        for (int localIdx = 0; localIdx < graph.edges[current.id].size(); localIdx++) {
+        // Collect updates in thread-local storage first
+        vector<AStarNode> localNodes;
+
+        #pragma omp parallel for schedule(dynamic) default(none) shared(graph, current, gScore, fScore, cameFrom, closed, goal, localNodes, std::cerr)
+        for (int localIdx = 0; localIdx < (int)graph.edges[current.id].size(); localIdx++) {
             const Edge &edge = graph.edges[current.id][localIdx];
             int neighbor = (edge.start == current.id) ? edge.end : edge.start;
+
             if (closed[neighbor]) continue;
 
             float edgeCost = computeEdgeCost(graph, edge);
             float tentative_gScore = gScore[current.id] + edgeCost;
-            if (tentative_gScore < gScore[neighbor]) {
-                gScore[neighbor] = tentative_gScore;
-                fScore[neighbor] = tentative_gScore + cost_heuristic(graph, neighbor, goal);
-                cameFrom[neighbor] = current.id;
-                openSet.push({neighbor, gScore[neighbor], fScore[neighbor], current.id});
+
+            #pragma omp critical
+            {
+                if (tentative_gScore < gScore[neighbor]) {
+                    gScore[neighbor] = tentative_gScore;
+                    fScore[neighbor] = tentative_gScore + cost_heuristic(graph, neighbor, goal);
+                    cameFrom[neighbor] = current.id;
+                    localNodes.push_back({neighbor, gScore[neighbor], fScore[neighbor], current.id});
+                }
             }
+        }
+
+        // Merge thread-local new nodes into the global open set
+        for (const AStarNode &node : localNodes) {
+            openSet.push(node);
         }
     }
     return false;
