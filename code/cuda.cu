@@ -5,7 +5,55 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
+#include <stdio.h>
+#include <stdlib.h>
 using namespace std;
+
+// Device Functions
+
+__device__ int cudacomputeManhattanCost(Vertex *vertices, const Edge &edge) {
+    int x1 = vertices[edge.start].x;
+    int y1 = vertices[edge.start].y;
+    int x2 = vertices[edge.end].x;
+    int y2 = vertices[edge.end].y;
+    return abs(x1 - x2) + abs(y1 - y2);
+}
+
+
+__device__ float cudacomputeEdgeCost(Vertex *vertices, const Edge &edge) {
+    return (float) cudacomputeManhattanCost(vertices, edge);
+}
+
+__device__ float cudacost_heuristic(Vertex *vertices, int current, int goal, float minCost) {
+    int dx = abs(vertices[current].x - vertices[goal].x);
+    int dy = abs(vertices[current].y - vertices[goal].y);
+    int manhattan = dx + dy;
+    return manhattan * minCost;
+}
+
+// CUDA Kernels
+__global__ void parallel_for(int N, int id, int goal, int minCost, Vertex *vertices, Edge *edges, float *fScore, float *gScore, int *cameFrom, bool *closed, AStarNode *output) {
+	int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	
+	if (idx < N) {
+		const Edge &edge = edges[idx];
+        int neighbor = (edge.start == id) ? edge.end : edge.start;
+ 		if (closed[neighbor]) {
+            output[idx] = {-1, -1, -1, -1};
+        }
+  		float edgeCost = cudacomputeEdgeCost(vertices, edge);
+		float tentative_gScore = gScore[id] + edgeCost;
+		if (tentative_gScore < gScore[neighbor]) {
+			gScore[neighbor] = tentative_gScore;
+	        fScore[neighbor] = tentative_gScore + cudacost_heuristic(vertices, neighbor, goal, minCost);
+	        cameFrom[neighbor] = id;
+			output[idx] = {neighbor, gScore[neighbor], fScore[neighbor], id};
+		} else {
+			output[idx] = {-1, -1, -1, -1};
+		}
+	}
+}
+
 
 // --------------------------------------------------------------------
 // Compute Manhattan distance between the two endpoints of an edge.
@@ -57,6 +105,10 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
     vector<int> cameFrom(n, -1);
     vector<bool> closed(n, false);
 
+    Vertex *vertices;
+    cudaMalloc(&vertices, sizeof(Vertex) * graph.vertices.size());
+    cudaMemcpy(vertices, graph.vertices.data(), sizeof(Vertex) * graph.vertices.size(), cudaMemcpyHostToDevice);
+
     priority_queue<AStarNode, vector<AStarNode>, greater<AStarNode>> openSet;
     gScore[start] = 0.0;
     fScore[start] = cost_heuristic(graph, start, goal);
@@ -74,10 +126,10 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
                 cur = cameFrom[cur];
             }
             reverse(path.begin(), path.end());
-            std::cerr << "[A*] Found route: ";
+            // std::cerr << "[A*] Found route: ";
             for (int node : path)
-                cout << node << " ";
-            std::cerr << std::endl;
+                // cout << node << " ";
+            // std::cerr << std::endl;
             return true;
         }
 
@@ -86,8 +138,78 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
         closed[current.id] = true;
         cameFrom[current.id] = current.parent;
 
-        // Iterate directly over the edges from current node.
-        for (int localIdx = 0; localIdx < graph.edges[current.id].size(); localIdx++) {
+        
+		//Move Data to GPU & Allocate Buffers
+        int N = graph.edges[current.id].size();
+		Edge *edges;
+		cudaMalloc(&edges, sizeof(Edge) * N);
+		cudaMemcpy(edges, graph.edges[current.id].data(), sizeof(Edge) * N, cudaMemcpyHostToDevice);
+		
+		float *f_score;
+		cudaMalloc(&f_score, sizeof(float) * n);
+		cudaMemcpy(f_score, fScore.data(), sizeof(float) * n, cudaMemcpyHostToDevice);
+
+		float *g_score;
+		cudaMalloc(&g_score, sizeof(float) * n);
+		cudaMemcpy(g_score, gScore.data(), sizeof(float) * n, cudaMemcpyHostToDevice);
+
+		int *came_from;
+		cudaMalloc(&came_from, sizeof(int) * n);
+		cudaMemcpy(came_from, cameFrom.data(), sizeof(int) * n, cudaMemcpyHostToDevice);
+
+		bool *cuda_closed;
+        bool *tmp = (bool *) malloc(sizeof(bool) * n);
+		cudaMalloc(&cuda_closed, sizeof(bool) * n);
+		for (int i = 0; i < closed.size(); i++) {
+            tmp[i] = closed[i];
+        }
+        cudaMemcpy(cuda_closed, tmp, sizeof(bool) * n, cudaMemcpyHostToDevice);
+
+		AStarNode *output;
+		cudaMalloc(&output, sizeof(AStarNode) * graph.edges[current.id].size());
+
+		//Compute Cuda Launch Params
+        int minCost = getMinimumEdgeCost(graph);
+		int blocks = (N + 255)/256;
+		parallel_for<<<blocks, 256>>>(N, current.id, goal, minCost, vertices, edges, f_score, g_score, came_from, cuda_closed, output);
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA kernel launch error: %s\n", cudaGetErrorString(err));
+        }
+
+		//Move Data back to CPU for processing
+        cudaDeviceSynchronize();
+        AStarNode *host_output = (AStarNode *) malloc(sizeof(AStarNode) * graph.edges[current.id].size());
+        cudaMemcpy(host_output, output, sizeof(AStarNode) * graph.edges[current.id].size(), cudaMemcpyDeviceToHost);
+
+        //Free all the stuff we allocated
+        cudaFree(edges);
+        cudaFree(f_score);
+        cudaFree(g_score);
+        cudaFree(came_from);
+        cudaFree(cuda_closed);
+
+
+        // fprintf(stderr, "CUDA Output: [");
+        for (int i = 0; i < graph.edges[current.id].size(); i++) {
+            if (host_output[i].id != -1) {
+                int neighbor = host_output[i].id;
+                if (host_output[i].g < gScore[neighbor]) {
+                    gScore[neighbor] = host_output[i].g;
+                    fScore[neighbor] = host_output[i].f;
+                    cameFrom[neighbor] = current.id;
+                    // fprintf(stderr, "(%d,%f,%f,%d),", neighbor, gScore[neighbor], fScore[neighbor], current.id);
+                    openSet.push({neighbor, gScore[neighbor], fScore[neighbor], current.id});
+                }
+            }
+        }
+        // fprintf(stderr, "]\n");
+
+
+		// Iterate directly over the edges from current node.
+        /*
+        fprintf(stderr, "Trad Output: [");
+		for (int localIdx = 0; localIdx < graph.edges[current.id].size(); localIdx++) {
             const Edge &edge = graph.edges[current.id][localIdx];
             int neighbor = (edge.start == current.id) ? edge.end : edge.start;
             if (closed[neighbor]) continue;
@@ -98,10 +220,16 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
                 gScore[neighbor] = tentative_gScore;
                 fScore[neighbor] = tentative_gScore + cost_heuristic(graph, neighbor, goal);
                 cameFrom[neighbor] = current.id;
+                fprintf(stderr, "(%d,%f,%f,%d),", neighbor, gScore[neighbor], fScore[neighbor], current.id);
                 openSet.push({neighbor, gScore[neighbor], fScore[neighbor], current.id});
             }
         }
+        fprintf(stderr, "]\n");
+        //*/
     }
+
+    cudaFree(vertices);
+
     return false;
 }
 
@@ -131,7 +259,7 @@ void update_edge_loads_current(Graph &graph, const vector<int> &prevPositions, c
             }
         }
         if (!foundEdge) {
-            std::cerr << "[DEBUG] Edge not found for traversal from " << u << " to " << v << std::endl;
+            // std::cerr << "[DEBUG] Edge not found for traversal from " << u << " to " << v << std::endl;
         }
     }
 }
@@ -159,7 +287,7 @@ void simulate_discrete_time(Problem &p) {
     bool anyNotDone = true;
     int tick = 0;
     while (anyNotDone) {
-        std::cerr << "Tick " << tick << ":" << std::endl;
+        // std::cerr << "Tick " << tick << ":" << std::endl;
         // Save current positions as previous positions.
         prevPositions = currentPosition;
 
@@ -169,7 +297,7 @@ void simulate_discrete_time(Problem &p) {
                 continue;
             bool needReplan = false;
             if (vehicleRoutes[i].empty() || vehicleRoutes[i].size() < 2) {
-                std::cerr << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << std::endl;
+                //std::cerr << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << std::endl;
                 needReplan = true;
             } else {
                 int nextNode = vehicleRoutes[i][1];
@@ -181,9 +309,9 @@ void simulate_discrete_time(Problem &p) {
                     if ((edge.start == currentPosition[i] && edge.end == nextNode) ||
                         (edge.start == nextNode && edge.end == currentPosition[i])) {
                         edgeFound = true;
-                        std::cerr << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
-                             << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
-                             << ", load = " << edge.load << ", capacity = " << edge.capacity << std::endl;
+                        //std::cerr << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
+                        //     << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
+                        //     << ", load = " << edge.load << ", capacity = " << edge.capacity << std::endl;
                         if (edge.load < edge.capacity) {
                             canProceed = true;
                         }
@@ -191,12 +319,12 @@ void simulate_discrete_time(Problem &p) {
                     }
                 }
                 if (!edgeFound) {
-                    std::cerr << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
-                         << " to " << nextNode << ". Replanning." << std::endl;
+                    //std::cerr << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
+                    //     << " to " << nextNode << ". Replanning." << std::endl;
                     needReplan = true;
                 } else if (!canProceed) {
-                    std::cerr << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
-                        << " because edge to " << nextNode << " is full." << std::endl;
+                    //std::cerr << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
+                    //    << " because edge to " << nextNode << " is full." << std::endl;
                     continue;
                 }
             }
@@ -206,12 +334,12 @@ void simulate_discrete_time(Problem &p) {
                 bool found = a_star(p.graph, currentPosition[i], p.cars[i].dest, newRoute);
                 if (found) {
                     vehicleRoutes[i] = newRoute;
-                    std::cerr << "[DEBUG] Vehicle " << i << " replanned route: ";
-                    for (int node : newRoute)
-                        std::cerr << node << " ";
-                    std::cerr << std::endl;
+                    //std::cerr << "[DEBUG] Vehicle " << i << " replanned route: ";
+                    //for (int node : newRoute)
+                        //std::cerr << node << " ";
+                    //std::cerr << std::endl;
                 } else {
-                    std::cerr << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << std::endl;
+                    //std::cerr << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << std::endl;
                     reachedDestination[i] = true;
                     continue;
                 }
@@ -219,7 +347,7 @@ void simulate_discrete_time(Problem &p) {
             
             if (vehicleRoutes[i].size() <= 1) {
                 reachedDestination[i] = true;
-                std::cerr << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << std::endl;
+                //std::cerr << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << std::endl;
                 continue;
             }
             
@@ -227,20 +355,20 @@ void simulate_discrete_time(Problem &p) {
             vehicleRoutes[i].erase(vehicleRoutes[i].begin());
             currentPosition[i] = vehicleRoutes[i][0];
             overallPaths[i].push_back(currentPosition[i]); // Record the move.
-            std::cerr << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << std::endl;
+            //std::cerr << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << std::endl;
         }
         
         // Update edge loads based only on the moves of this tick.
         update_edge_loads_current(p.graph, prevPositions, currentPosition);
         
-        Print current positions.
-        std::cerr << "After tick " << tick << ", vehicle positions:" << std::endl;
-        for (int i = 0; i < numVehicles; i++) {
-            std::cerr << "Vehicle " << i << " is at node " << currentPosition[i];
-            if (reachedDestination[i])
-                std::cerr << " [DEST]";
-            std::cerr << std::endl;
-        }
+        // Print current positions.
+        // std::cerr << "After tick " << tick << ", vehicle positions:" << std::endl;
+        // for (int i = 0; i < numVehicles; i++) {
+            // std::cerr << "Vehicle " << i << " is at node " << currentPosition[i];
+            // if (reachedDestination[i])
+                // std::cerr << " [DEST]";
+            // std::cerr << std::endl;
+        // }
         
         anyNotDone = false;
         for (int i = 0; i < numVehicles; i++) {
@@ -251,17 +379,18 @@ void simulate_discrete_time(Problem &p) {
     }
     
     // Print final overall movement histories.
-    std::cerr << "Final overall routes (complete movement histories):" << std::endl;
+    // std::cerr << "Final overall routes (complete movement histories):" << std::endl;
     for (int i = 0; i < numVehicles; i++) {
-        std::cerr << i << ":";
+        std::cout << i << ":";
         for (size_t j = 0; j < overallPaths[i].size(); j++) {
-            std::cerr << overallPaths[i][j];
+            std::cout << overallPaths[i][j];
             if (j < overallPaths[i].size() - 1)
-                std::cerr << ",";
+                std::cout << ",";
         }
-        std::cerr << std::endl;
+        std::cout << std::endl;
     }
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
-    cout << "Simulation completed in " << elapsed.count() << " seconds." << endl;
+    // cout << "Simulation completed in " << elapsed.count() << " seconds." << endl;
 }
+

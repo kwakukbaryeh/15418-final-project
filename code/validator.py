@@ -70,7 +70,8 @@ def parse_problem(file_name : str):
             edges.append(l)
         else:
             v = graphFile[i].split(",")
-            cars.append(Car(int(v[0].strip("()")), int(v[1].strip("()"))))
+            if (v[0] != ''):
+                cars.append(Car(int(v[0].strip("()")), int(v[1].strip("()"))))
     
     return vertices, edges, cars
 
@@ -78,7 +79,7 @@ def parse_problem(file_name : str):
 def parse_solution(file_name : str, cars : list[Car]):
     solnFile = open(file_name, "r").read().split("\n")
     
-    for i in range(len(solnFile)):
+    for i in range(len(cars)):
         cars[i].path = list(map(int,solnFile[i].split(":")[1].split(",")))
 
 
@@ -92,10 +93,12 @@ def validate_solution(cars : list[Car], edges : list[list[Edge]]):
                     if edge.end == c.path[i]:
                         ok = True
                 if not ok:
-                    print("Validation Failed!")
-                    break    
+                    print("Validation Failed! Path is not correct")
+                    return False    
         else:
-            print("Validation Failed!")
+            print("Validation Failed! Graph is not correct")
+            return False
+    return True
 
 # Simulation
 def simulate(vertices : list[Vertex], edges : list[list[Edge]], cars : list[Car]):
@@ -147,7 +150,7 @@ def main ():
 
     args = parser.parse_args()
     vertices, edges, cars = parse_problem(args.problem)
-    parse_solution(args.solution)
+    parse_solution(args.solution, cars)
     if not validate_solution(cars, edges):
         print("Validation Failed!")
         return
@@ -155,7 +158,7 @@ def main ():
     elif args.simulate:
         costs = simulate(vertices, edges, cars)
         for i in range(len(cars)):
-            print(repr(cars[i]) + ': ' + costs[i])
+            print(repr(cars[i]) + ': ' + repr(costs[i]))
 
     
 
