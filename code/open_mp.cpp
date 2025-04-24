@@ -6,6 +6,7 @@
 #include <iostream>
 #include <omp.h>
 #include <chrono>
+#include <fstream>
 
 using namespace std;
 
@@ -286,15 +287,24 @@ void simulate_discrete_time(Problem &p) {
     
     // Finally, print final overall movement histories.
     std::cerr << "Final overall routes (complete movement histories):" << std::endl;
-    for (int i = 0; i < numVehicles; i++) {
-        std::cerr << i << ":";
-        for (size_t j = 0; j < overallPaths[i].size(); j++) {
-            std::cerr << overallPaths[i][j];
-            if (j < overallPaths[i].size() - 1)
-                std::cerr << ",";
-        }
-        std::cerr << std::endl;
+    std::ofstream logFile("log_parallel.txt");
+    if (!logFile.is_open()) {
+        std::cerr << "Failed to open log_parallel.txt for writing!" << std::endl;
+        return;
     }
+
+    for (int i = 0; i < numVehicles; i++) {
+        logFile << i << ":";
+        for (size_t j = 0; j < overallPaths[i].size(); j++) {
+            logFile << overallPaths[i][j];
+            if (j < overallPaths[i].size() - 1)
+                logFile << ",";
+        }
+        logFile << "\n";
+    }
+
+    logFile.close();
+    std::cerr << "Saved solution to log_parallel.txt" << std::endl;
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
     std::cerr << "Simulation completed in " << elapsed.count() << " seconds." << std::endl;

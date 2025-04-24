@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
+#include <fstream>
 using namespace std;
 
 // --------------------------------------------------------------------
@@ -233,7 +234,7 @@ void simulate_discrete_time(Problem &p) {
         // Update edge loads based only on the moves of this tick.
         update_edge_loads_current(p.graph, prevPositions, currentPosition);
         
-        Print current positions.
+        // Print current positions.
         std::cerr << "After tick " << tick << ", vehicle positions:" << std::endl;
         for (int i = 0; i < numVehicles; i++) {
             std::cerr << "Vehicle " << i << " is at node " << currentPosition[i];
@@ -252,14 +253,20 @@ void simulate_discrete_time(Problem &p) {
     
     // Print final overall movement histories.
     std::cerr << "Final overall routes (complete movement histories):" << std::endl;
+    std::ofstream logFile("log_seq.txt");
+    if (!logFile.is_open()) {
+        std::cerr << "Failed to open log_seq.txt for writing!" << std::endl;
+        return;
+    }
+
     for (int i = 0; i < numVehicles; i++) {
-        std::cerr << i << ":";
+        logFile << i << ":";
         for (size_t j = 0; j < overallPaths[i].size(); j++) {
-            std::cerr << overallPaths[i][j];
+            logFile << overallPaths[i][j];
             if (j < overallPaths[i].size() - 1)
-                std::cerr << ",";
+                logFile << ",";
         }
-        std::cerr << std::endl;
+        logFile << "\n";
     }
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
