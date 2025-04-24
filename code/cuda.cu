@@ -391,6 +391,6 @@ void simulate_discrete_time(Problem &p) {
     }
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
-    // cout << "Simulation completed in " << elapsed.count() << " seconds." << endl;
+    cerr << "Simulation completed in " << elapsed.count() << " seconds." << endl;
 }
 
