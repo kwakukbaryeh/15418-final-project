@@ -75,10 +75,10 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
                 cur = cameFrom[cur];
             }
             reverse(path.begin(), path.end());
-            std::cerr << "[A*] Found route: ";
-            for (int node : path)
-                cout << node << " ";
-            std::cerr << std::endl;
+            // std::cerr << "[A*] Found route: ";
+            // for (int node : path)
+            //     cout << node << " ";
+            // std::cerr << std::endl;
             return true;
         }
 
@@ -132,7 +132,7 @@ void update_edge_loads_current(Graph &graph, const vector<int> &prevPositions, c
             }
         }
         if (!foundEdge) {
-            std::cerr << "[DEBUG] Edge not found for traversal from " << u << " to " << v << std::endl;
+            // std::cerr << "[DEBUG] Edge not found for traversal from " << u << " to " << v << std::endl;
         }
     }
 }
@@ -160,7 +160,7 @@ void simulate_discrete_time(Problem &p) {
     bool anyNotDone = true;
     int tick = 0;
     while (anyNotDone) {
-        std::cerr << "Tick " << tick << ":" << std::endl;
+        // std::cerr << "Tick " << tick << ":" << std::endl;
         // Save current positions as previous positions.
         prevPositions = currentPosition;
 
@@ -170,7 +170,7 @@ void simulate_discrete_time(Problem &p) {
                 continue;
             bool needReplan = false;
             if (vehicleRoutes[i].empty() || vehicleRoutes[i].size() < 2) {
-                std::cerr << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << std::endl;
+                // std::cerr << "[DEBUG] Vehicle " << i << " has no route or route too short. Replanning." << std::endl;
                 needReplan = true;
             } else {
                 int nextNode = vehicleRoutes[i][1];
@@ -182,9 +182,9 @@ void simulate_discrete_time(Problem &p) {
                     if ((edge.start == currentPosition[i] && edge.end == nextNode) ||
                         (edge.start == nextNode && edge.end == currentPosition[i])) {
                         edgeFound = true;
-                        std::cerr << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
-                             << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
-                             << ", load = " << edge.load << ", capacity = " << edge.capacity << std::endl;
+                        // std::cerr << "[DEBUG] Vehicle " << i << " sees edge from " << currentPosition[i]
+                        //      << " to " << nextNode << ": base cost = " << computeManhattanCost(p.graph, edge)
+                        //      << ", load = " << edge.load << ", capacity = " << edge.capacity << std::endl;
                         if (edge.load < edge.capacity) {
                             canProceed = true;
                         }
@@ -192,12 +192,12 @@ void simulate_discrete_time(Problem &p) {
                     }
                 }
                 if (!edgeFound) {
-                    std::cerr << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
-                         << " to " << nextNode << ". Replanning." << std::endl;
+                    // std::cerr << "[DEBUG] Vehicle " << i << " did not find an edge from " << currentPosition[i]
+                    //      << " to " << nextNode << ". Replanning." << std::endl;
                     needReplan = true;
                 } else if (!canProceed) {
-                    std::cerr << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
-                        << " because edge to " << nextNode << " is full." << std::endl;
+                    // std::cerr << "[DEBUG] Vehicle " << i << " waiting at node " << currentPosition[i]
+                    //     << " because edge to " << nextNode << " is full." << std::endl;
                     continue;
                 }
             }
@@ -207,12 +207,12 @@ void simulate_discrete_time(Problem &p) {
                 bool found = a_star(p.graph, currentPosition[i], p.cars[i].dest, newRoute);
                 if (found) {
                     vehicleRoutes[i] = newRoute;
-                    std::cerr << "[DEBUG] Vehicle " << i << " replanned route: ";
-                    for (int node : newRoute)
-                        std::cerr << node << " ";
-                    std::cerr << std::endl;
+                    // std::cerr << "[DEBUG] Vehicle " << i << " replanned route: ";
+                    // for (int node : newRoute)
+                    //     std::cerr << node << " ";
+                    // std::cerr << std::endl;
                 } else {
-                    std::cerr << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << std::endl;
+                    // std::cerr << "[DEBUG] Vehicle " << i << " is stuck at node " << currentPosition[i] << std::endl;
                     reachedDestination[i] = true;
                     continue;
                 }
@@ -220,7 +220,7 @@ void simulate_discrete_time(Problem &p) {
             
             if (vehicleRoutes[i].size() <= 1) {
                 reachedDestination[i] = true;
-                std::cerr << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << std::endl;
+                // std::cerr << "[DEBUG] Vehicle " << i << " reached destination at node " << currentPosition[i] << std::endl;
                 continue;
             }
             
@@ -228,20 +228,20 @@ void simulate_discrete_time(Problem &p) {
             vehicleRoutes[i].erase(vehicleRoutes[i].begin());
             currentPosition[i] = vehicleRoutes[i][0];
             overallPaths[i].push_back(currentPosition[i]); // Record the move.
-            std::cerr << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << std::endl;
+            // std::cerr << "[DEBUG] Vehicle " << i << " advanced to node " << currentPosition[i] << std::endl;
         }
         
         // Update edge loads based only on the moves of this tick.
         update_edge_loads_current(p.graph, prevPositions, currentPosition);
         
         // Print current positions.
-        std::cerr << "After tick " << tick << ", vehicle positions:" << std::endl;
-        for (int i = 0; i < numVehicles; i++) {
-            std::cerr << "Vehicle " << i << " is at node " << currentPosition[i];
-            if (reachedDestination[i])
-                std::cerr << " [DEST]";
-            std::cerr << std::endl;
-        }
+        // std::cerr << "After tick " << tick << ", vehicle positions:" << std::endl;
+        // for (int i = 0; i < numVehicles; i++) {
+        //     std::cerr << "Vehicle " << i << " is at node " << currentPosition[i];
+        //     if (reachedDestination[i])
+        //         std::cerr << " [DEST]";
+        //     std::cerr << std::endl;
+        // }
         
         anyNotDone = false;
         for (int i = 0; i < numVehicles; i++) {
@@ -252,25 +252,24 @@ void simulate_discrete_time(Problem &p) {
     }
     
     // Print final overall movement histories.
-    std::cerr << "Final overall routes (complete movement histories):" << std::endl;
-    std::ofstream logFile("log_seq.txt");
-    if (!logFile.is_open()) {
-        std::cerr << "Failed to open log_seq.txt for writing!" << std::endl;
-        return;
-    }
+    // std::cerr << "Final overall routes (complete movement histories):" << std::endl;
+    // std::ofstream logFile("log_seq.txt");
+    // if (!logFile.is_open()) {
+        // std::cerr << "Failed to open log_seq.txt for writing!" << std::endl;
+        // return;
+    // }
 
     for (int i = 0; i < numVehicles; i++) {
-        logFile << i << ":";
+        printf("%d:", i);
         for (size_t j = 0; j < overallPaths[i].size(); j++) {
-            logFile << overallPaths[i][j];
+            printf("%d", overallPaths[i][j]);
             if (j < overallPaths[i].size() - 1)
-                logFile << ",";
+                printf(",");
         }
-        logFile << "\n";
+        printf("\n");
     }
-    logFile.close();
-    std::cerr << "Saved solution to log_seq.txt" << std::endl;
+    // std::cerr << "Saved solution to log_seq.txt" << std::endl;
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed = end_time - start_time;
-    cout << "Simulation completed in " << elapsed.count() << " seconds." << endl;
+    cerr << "Simulation completed in " << elapsed.count() << " seconds." << endl;
 }
