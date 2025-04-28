@@ -92,8 +92,6 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
 
         // Collect updates in thread-local storage first
         vector<AStarNode> localNodes;
-
-        #pragma omp parallel for schedule(dynamic) default(none) shared(graph, current, gScore, fScore, cameFrom, closed, goal, localNodes, std::cerr)
         for (int localIdx = 0; localIdx < (int)graph.edges[current.id].size(); localIdx++) {
             const Edge &edge = graph.edges[current.id][localIdx];
             int neighbor = (edge.start == current.id) ? edge.end : edge.start;
@@ -103,7 +101,6 @@ bool a_star(const Graph &graph, int start, int goal, vector<int> &path) {
             float edgeCost = computeEdgeCost(graph, edge);
             float tentative_gScore = gScore[current.id] + edgeCost;
 
-            #pragma omp critical
             {
                 if (tentative_gScore < gScore[neighbor]) {
                     gScore[neighbor] = tentative_gScore;
@@ -168,7 +165,7 @@ void simulate_discrete_time(Problem &p) {
     bool anyNotDone = true;
     int tick = 0;
     while (anyNotDone) {
-        std::cerr << "Tick " << tick << ":" << std::endl;
+        // std::cerr << "Tick " << tick << ":" << std::endl;
         // Save current positions as previous positions.
         prevPositions = currentPosition;
 
@@ -286,7 +283,7 @@ void simulate_discrete_time(Problem &p) {
     }
     
     // Finally, print final overall movement histories.
-    std::cerr << "Final overall routes (complete movement histories):" << std::endl;
+    // std::cerr << "Final overall routes (complete movement histories):" << std::endl;
     std::ofstream logFile("log_parallel.txt");
     if (!logFile.is_open()) {
         std::cerr << "Failed to open log_parallel.txt for writing!" << std::endl;

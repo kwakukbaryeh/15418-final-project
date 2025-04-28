@@ -252,7 +252,7 @@ void simulate_discrete_time(Problem &p) {
     }
     
     // Print final overall movement histories.
-    std::cerr << "Final overall routes (complete movement histories):" << std::endl;
+    // std::cerr << "Final overall routes (complete movement histories):" << std::endl;
     std::ofstream logFile("log_seq.txt");
     if (!logFile.is_open()) {
         std::cerr << "Failed to open log_seq.txt for writing!" << std::endl;
