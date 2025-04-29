@@ -127,6 +127,7 @@ def simulate(vertices : list[Vertex], edges : list[list[Edge]], cars : list[Car]
                 next_edge = get_edge(edges[locs[i]], cars[i].path[0])
                 if (next_edge.load == next_edge.capacity):
                     waiting[i] = 1
+                    costs[i] += 1
                 else:
                     cursor[i].load -= 1
                     next_edge.load += 1
@@ -157,6 +158,7 @@ def main ():
     
     elif args.simulate:
         costs = simulate(vertices, edges, cars)
+        print(f'Total Cost: {sum(costs)}')
         for i in range(len(cars)):
             print(repr(cars[i]) + ': ' + repr(costs[i]))
 
@@ -164,4 +166,3 @@ def main ():
 
 if __name__ == "__main__":
     main()
-        
