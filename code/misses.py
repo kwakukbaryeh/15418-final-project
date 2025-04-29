@@ -19,8 +19,6 @@ plt.legend()
 plt.grid(axis='y', linestyle='--', alpha=0.6)
 plt.tight_layout()
 
-# Save to PNG:
 plt.savefig('cache_misses.png', dpi=300)
 
-# (Optional) display interactively:
-# plt.show()
+
