@@ -1,12 +1,9 @@
----
-title: "Parallel Congestion-Aware Vehicle Routing"
----
+# Parallel Congestion-Aware Vehicle Routing**
 
 ## Latest News
 
-## Title
-**Parallel Congestion-Aware Vehicle Routing**
+## [Final Report](https://www.overleaf.com/read/xdwqjnkbjrws#daa2c7)
 
-## Proposal
-You can find our detailed proposal on Overleaf here:
-[Project Proposal](https://www.overleaf.com/read/bkngmypsrvgp#0bc726)
+## [Interim Report](https://www.overleaf.com/read/mmhpfyfxfbmh#6dc762)
+
+## [Proposal](https://www.overleaf.com/read/bkngmypsrvgp#0bc726)
